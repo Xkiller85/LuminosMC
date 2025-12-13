@@ -100,8 +100,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function initializeSystem() {
+  console.log('🔄 Inizializzazione sistema...');
+  
   // Inizializza owner solo se non esistono admin users
   const adminUsers = await loadData('admin_users', []);
+  console.log('📊 Admin users trovati:', adminUsers.length);
+  
   if (adminUsers.length === 0) {
     // Crea un admin owner di default per il primo accesso
     const defaultOwner = {
@@ -111,12 +115,23 @@ async function initializeSystem() {
       roles: ['owner'],
       created: new Date().toISOString().split('T')[0]
     };
-    await saveData('admin_users', [defaultOwner]);
+    
+    const success = await saveData('admin_users', [defaultOwner]);
+    console.log('✅ Account Owner creato:', success);
+    
+    // Verifica che sia stato salvato
+    const verify = await loadData('admin_users', []);
+    console.log('🔍 Verifica admin salvato:', verify);
+    
     showAlert('SETUP INIZIALE: Account Owner creato! Username: admin | Password: admin', 'success');
+  } else {
+    console.log('ℹ️ Admin users già presenti:', adminUsers);
   }
 
   // Inizializza ruoli se non esistono
   const roles = await loadData('roles', []);
+  console.log('📊 Ruoli trovati:', roles.length);
+  
   if (roles.length === 0) {
     const defaultRoles = [
       {
@@ -149,10 +164,13 @@ async function initializeSystem() {
       }
     ];
     await saveData('roles', defaultRoles);
+    console.log('✅ Ruoli creati');
   }
 
   // Inizializza prodotti se non esistono
   const products = await loadData('products', []);
+  console.log('📊 Prodotti trovati:', products.length);
+  
   if (products.length === 0) {
     const defaultProducts = [
       {
@@ -185,7 +203,10 @@ async function initializeSystem() {
       }
     ];
     await saveData('products', defaultProducts);
+    console.log('✅ Prodotti creati');
   }
+  
+  console.log('✅ Inizializzazione completata');
 }
 
 /* ========================================
@@ -243,17 +264,24 @@ async function handleAdminLogin() {
   const username = document.getElementById('adminUsername').value.trim();
   const password = document.getElementById('adminPassword').value;
 
+  console.log('🔐 Tentativo login admin:', username);
+
   if (!username || !password) {
     showAlert('Compila tutti i campi!', 'error');
     return;
   }
 
   const adminUsers = await loadData('admin_users', []);
-  console.log('Admin users trovati:', adminUsers); // Debug
+  console.log('👥 Admin users nel database:', adminUsers);
+  console.log('🔍 Cerco:', { username, password });
   
-  const admin = adminUsers.find(u => u.username === username && u.password === password);
+  const admin = adminUsers.find(u => {
+    console.log('Confronto con:', u.username, u.password);
+    return u.username === username && u.password === password;
+  });
 
   if (admin) {
+    console.log('✅ Admin trovato:', admin);
     currentAdmin = { ...admin };
     await saveSession({ ...admin, isAdmin: true });
     showAlert('Accesso admin effettuato!', 'success');
@@ -261,8 +289,8 @@ async function handleAdminLogin() {
     document.getElementById('adminPanel').style.display = 'block';
     await renderAdminContent();
   } else {
-    showAlert(`Credenziali admin errate! (Trovati ${adminUsers.length} admin nel database)`, 'error');
-    console.log('Tentativi di login - Username:', username, 'Password:', password);
+    console.log('❌ Admin non trovato');
+    showAlert(`Credenziali admin errate! (Database ha ${adminUsers.length} admin)`, 'error');
   }
 }
 
@@ -629,6 +657,8 @@ async function resetAllData() {
 
 // Funzione per creare manualmente l'admin di default
 async function createDefaultAdmin() {
+  console.log('🔧 Creazione manuale admin...');
+  
   const defaultOwner = {
     id: 'admin_owner',
     username: 'admin',
@@ -638,15 +668,23 @@ async function createDefaultAdmin() {
   };
   
   const adminUsers = await loadData('admin_users', []);
+  console.log('📊 Admin attuali:', adminUsers);
   
   // Controlla se esiste già
   if (adminUsers.find(u => u.username === 'admin')) {
     showAlert('Account admin già esistente!', 'error');
+    console.log('⚠️ Admin già presente nel database');
     return;
   }
   
   adminUsers.push(defaultOwner);
-  await saveData('admin_users', adminUsers);
+  const success = await saveData('admin_users', adminUsers);
+  console.log('💾 Salvataggio risultato:', success);
+  
+  // Verifica immediata
+  const verify = await loadData('admin_users', []);
+  console.log('🔍 Verifica dopo salvataggio:', verify);
+  
   showAlert('Account admin creato! Username: admin | Password: admin', 'success');
 }
 
