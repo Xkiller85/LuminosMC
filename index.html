@@ -111,10 +111,11 @@
       </div>
 
       <div class="card">
-        <h3>Post della community</h3>
+        <h3>Tutti i post</h3>
         <div class="form-group">
           <input type="text" id="searchPosts" placeholder="🔍 Cerca post per titolo, contenuto o autore..." oninput="renderAllPosts()">
         </div>
+        <button class="btn btn-primary" onclick="renderAllPosts()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
         <div id="allPostsList"></div>
       </div>
 
@@ -128,7 +129,7 @@
   <!-- Admin Page -->
   <div id="admin" class="page">
     <div class="container">
-      <!-- Admin Login (se non loggato come admin) -->
+      <!-- Admin Login -->
       <div id="adminLoginSection" class="card" style="max-width: 500px; margin: 0 auto;">
         <h3>🔐 Accesso Admin</h3>
         <p style="color: #8899aa; margin-bottom: 20px;">Inserisci le credenziali admin per accedere al pannello</p>
@@ -143,7 +144,7 @@
         <button class="btn btn-primary" onclick="handleAdminLogin()">Accedi al Pannello</button>
       </div>
 
-      <!-- Admin Panel (visibile solo se loggato) -->
+      <!-- Admin Panel -->
       <div id="adminPanel" style="display:none">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h2 style="color: #00f0ff;">Pannello Admin</h2>
@@ -178,19 +179,16 @@
               <p>Prodotti Store</p>
             </div>
           </div>
-          <div class="card" style="margin-top: 30px;">
-            <h3>🛠️ Strumenti Admin</h3>
-            <button class="btn btn-primary" onclick="exportData()" style="width: 100%;">💾 Esporta Tutti i Dati (JSON)</button>
-          </div>
         </div>
 
         <!-- Posts Tab -->
         <div id="posts" class="admin-tab">
           <div class="card">
-            <h3>📝 Gestione Post del Forum</h3>
+            <h3>📝 Gestione Post</h3>
             <div class="form-group">
               <input type="text" id="adminSearchPosts" placeholder="🔍 Cerca post..." oninput="renderAdminPosts()">
             </div>
+            <button class="btn btn-primary" onclick="renderAdminPosts()" style="margin-bottom: 20px;">🔄 Aggiorna Lista</button>
             <div id="adminPostsList"></div>
           </div>
         </div>
@@ -198,9 +196,9 @@
         <!-- Staff Tab -->
         <div id="staff" class="admin-tab">
           <div class="card">
-            <h3>➕ Aggiungi Membro Staff</h3>
+            <h3>➕ Aggiungi Staff</h3>
             <div class="form-group">
-              <label>Nome</label>
+              <label>Username</label>
               <input type="text" id="staffUsername" placeholder="Username">
             </div>
             <div class="form-group">
@@ -219,6 +217,7 @@
             <div class="form-group">
               <input type="text" id="adminSearchStaff" placeholder="🔍 Cerca staff..." oninput="renderStaffList()">
             </div>
+            <button class="btn btn-primary" onclick="renderStaffList()" style="margin-bottom: 20px;">🔄 Aggiorna Lista</button>
             <div id="staffList"></div>
           </div>
         </div>
@@ -252,6 +251,7 @@
             <div class="form-group">
               <input type="text" id="adminSearchProducts" placeholder="🔍 Cerca prodotti..." oninput="renderProductsList()">
             </div>
+            <button class="btn btn-primary" onclick="renderProductsList()" style="margin-bottom: 20px;">🔄 Aggiorna Lista</button>
             <div id="productsList"></div>
           </div>
         </div>
@@ -264,6 +264,7 @@
             <div class="form-group">
               <input type="text" id="adminSearchUsers" placeholder="🔍 Cerca utenti..." oninput="renderUsersList()">
             </div>
+            <button class="btn btn-primary" onclick="renderUsersList()" style="margin-bottom: 20px;">🔄 Aggiorna Lista</button>
             <div id="usersList"></div>
           </div>
         </div>
