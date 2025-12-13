@@ -1,5 +1,5 @@
 /* ========================================
-   LUMINOS MC - STYLE.CSS
+   LUMINOS MC - APP.CSS
    ======================================== */
 
 * {
@@ -166,6 +166,7 @@ body {
 .hint a {
   color: #00f0ff;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .hint a:hover {
@@ -369,7 +370,7 @@ body {
 }
 
 /* ========================================
-   FORMS
+   FORM ELEMENTS
    ======================================== */
 
 .form-group {
@@ -379,8 +380,8 @@ body {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #b0c4de;
-  font-weight: 600;
+  color: #00f0ff;
+  font-weight: 500;
 }
 
 .form-group input,
@@ -394,7 +395,6 @@ body {
   color: #e0e6ed;
   font-size: 14px;
   transition: all 0.3s ease;
-  font-family: inherit;
 }
 
 .form-group input:focus,
@@ -402,7 +402,7 @@ body {
 .form-group select:focus {
   outline: none;
   border-color: #00f0ff;
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
 }
 
 .form-group textarea {
@@ -589,7 +589,7 @@ body {
   border-radius: 12px;
   font-size: 0.85em;
   font-weight: 600;
-  margin: 5px 0;
+  margin: 5px 5px 5px 0;
 }
 
 .role-admin {
@@ -605,6 +605,13 @@ body {
 .role-helper {
   background: linear-gradient(135deg, #00f0ff 0%, #00c0cc 100%);
   color: #0a0e27;
+}
+
+.role-owner {
+  background: linear-gradient(135deg, #ff00ff 0%, #cc00cc 100%);
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
 }
 
 /* ========================================
@@ -748,17 +755,6 @@ body {
 .pagination button {
   padding: 10px 20px;
   min-width: 120px;
-}
-
-/* ========================================
-   ROLE BADGE OWNER
-   ======================================== */
-
-.role-owner {
-  background: linear-gradient(135deg, #ff00ff 0%, #cc00cc 100%);
-  color: white;
-  font-weight: 700;
-  text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
 }
 
 /* ========================================
