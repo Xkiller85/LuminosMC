@@ -1,508 +1,426 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Staff Minecraft - cacca Roleplay</title>
-    <link rel="stylesheet" href="index.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuminosMC - Server Lifesteal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Pulsante Modalità Modifica -->
-    <div class="edit-toggle">
-        <button id="editModeBtn" class="edit-btn">
-            <i class="fas fa-edit"></i> Modalità Modifica
-        </button>
-        <button id="logoutBtn" class="edit-btn" style="margin-top: 10px; display: none;">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1 class="logo" onclick="showPage('home')">⚡ LuminosMC</h1>
+      <nav class="nav">
+        <button class="nav-btn active" onclick="showPage('home')" data-page="home">🏠 Home</button>
+        <button class="nav-btn" onclick="showPage('store')" data-page="store">🛒 Store</button>
+        <button class="nav-btn" onclick="showPage('forum')" data-page="forum">💬 Forum</button>
+        <button class="nav-btn" onclick="showPage('admin')" data-page="admin">⚡ Admin</button>
+        <button class="nav-btn" onclick="showPage('roles')" data-page="roles" style="display:none" id="rolesBtn">🎭 Ruoli</button>
+        <div class="user-info" id="userInfo"></div>
+      </nav>
     </div>
+  </header>
 
-    <!-- Gestore delle sezioni -->
-    <div id="sectionManager" class="section-manager">
-        <h3>Gestione Sezioni</h3>
-        <div class="section-list">
-            <h4>Sezioni Attive</h4>
-            <ul id="activeSectionsList">
-                <!-- Le sezioni attive verranno inserite qui dinamicamente -->
-            </ul>
+  <!-- Alert -->
+  <div class="container">
+    <div id="alert" class="alert alert-success"></div>
+  </div>
+
+  <!-- Login Page -->
+  <div id="login" class="page">
+    <div class="container">
+      <div class="login-container">
+        <div class="card login-card">
+          <h2 id="loginTitle">🔐 Login</h2>
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="loginUsername" placeholder="Inserisci username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" placeholder="Inserisci password">
+          </div>
+          <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Accedi</button>
+          <p class="hint">
+            <span id="loginHint">Non hai un account? <a onclick="switchToRegister()">Registrati</a><br>oppure <a onclick="showPage('home')">torna alla home</a></span>
+          </p>
         </div>
-        <div class="section-add">
-            <h4>Aggiungi Sezione</h4>
-            <select id="addSectionSelect">
-                <option value="" disabled selected>Seleziona una sezione da aggiungere</option>
-                <!-- Le opzioni verranno inserite qui dinamicamente -->
-            </select>
-        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Color Picker -->
-    <div class="color-picker-container">
-        <div class="color-picker-title">Personalizza Colori</div>
-        <div class="color-option">
-            <label for="color-primary-color">Primary</label>
-            <input type="color" id="color-primary-color" value="#4CAF50">
-        </div>
-        <div class="color-option">
-            <label for="color-secondary-color">Secondary</label>
-            <input type="color" id="color-secondary-color" value="#8BC34A">
-        </div>
-        <div class="color-option">
-            <label for="color-dark-color">Dark</label>
-            <input type="color" id="color-dark-color" value="#2E7D32">
-        </div>
-        <div class="color-option">
-            <label for="color-light-color">Light</label>
-            <input type="color" id="color-light-color" value="#C8E6C9">
-        </div>
-        <div class="color-option">
-            <label for="color-text-color">Text</label>
-            <input type="color" id="color-text-color" value="#333333">
-        </div>
-        <div class="color-option">
-            <label for="color-background-color">Background</label>
-            <input type="color" id="color-background-color" value="#f9f9f9">
-        </div>
-        <button class="btn btn-primary save-colors-btn" id="saveColorsBtn">Salva Colori</button>
+  <!-- Home Page -->
+  <div id="home" class="page active">
+    <div class="container">
+      <div class="hero">
+        <h2>Benvenuto su LuminosMC</h2>
+        <p><strong>LuminosMC</strong> ospita la <strong>Lifesteal più pericolosa d'Italia</strong>.</p>
+        <p>Una modalità unica dove <strong>ogni vittoria ti regala un cuore ❤️</strong></p>
+        <p>e <strong>ogni sconfitta te ne strappa uno 💔</strong>.</p>
+        <p><em>Sopravvivi, combatti e diventa leggenda!</em></p>
+        <button class="btn btn-primary" onclick="copyIP()">📋 Copia IP del server</button>
+      </div>
+
+      <div class="card">
+        <h3>Cosa troverai qui</h3>
+        <ul class="features-list">
+          <li><strong>Una Lifesteal pericolosa</strong> dove ogni cuore conta</li>
+          <li><strong>VIP esclusivi</strong> con vantaggi unici e stile da veri boss</li>
+          <li><strong>Una community stupenda</strong> pronta a combattere e collaborare</li>
+        </ul>
+      </div>
     </div>
+  </div>
 
-    <header>
-        <div class="container">
-            <nav>
-                <div class="logo editable" data-edit="text">MC<span>Portfolio</span></div>
-                <ul class="nav-links" id="navLinks">
-                    <!-- I link di navigazione verranno inseriti qui dinamicamente -->
-                </ul>
-                <div class="burger" id="burger">
-                    <div class="line1"></div>
-                    <div class="line2"></div>
-                    <div class="line3"></div>
-                </div>
-            </nav>
-        </div>
-    </header>
+  <!-- Store Page -->
+  <div id="store" class="page">
+    <div class="container">
+      <div class="hero">
+        <h2>Store ufficiale</h2>
+        <p>👑 Scegli il tuo <strong>VIP esclusivo</strong> e domina la Lifesteal.</p>
+      </div>
 
-    <!-- Sezione Home -->
-    <section id="home" class="hero section-container" data-section-id="home">
-        <div class="container">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <h1 class="editable" data-edit="text">Staff <span>Experiences</span></h1>
-                    <h2 class="editable" data-edit="text">Xkiller85</h2>
-                    <p class="editable" data-edit="text">Benvenuto nel mio portfolio professionale che mostra la mia esperienza come membro dello staff sui server Minecraft.</p>
-                    <div class="hero-btns">
-                        <a href="#esperienza" class="btn btn-primary">Scopri di più</a>
-                        <a href="#contatti" class="btn btn-secondary">Contattami</a>
-                    </div>
-                </div>
-                <div class="hero-image">
-                    <div class="profile-img editable" data-edit="image" style="background-image: url('https://via.placeholder.com/350')"></div>
-                </div>
-            </div>
-        </div>
-    </section>
+      <div id="storeGrid" class="store-grid"></div>
 
-    <!-- Sezione Esperienza -->
-    <section id="esperienza" class="experience section-container" data-section-id="esperienza">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">La Mia Esperienza</h2>
-            <div class="timeline editable-container" data-edit="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <div class="timeline-content">
-                        <h3 class="editable" data-edit="text">Moderatore - Charlie Roleplay</h3>
-                        <span class="date editable" data-edit="text">2022 - Presente</span>
-                        <p class="editable" data-edit="text">Gestione delle segnalazioni dei giocatori, monitoraggio della chat e risoluzione dei conflitti. Applicazione delle regole del server e mantenimento di un ambiente di gioco positivo.</p>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-icon">
-                        <i class="fas fa-tools"></i>
-                    </div>
-                    <div class="timeline-content right">
-                        <h3 class="editable" data-edit="text">Helper - Charlie Roleplay</h3>
-                        <span class="date editable" data-edit="text">2021 - 2022</span>
-                        <p class="editable" data-edit="text">Assistenza ai nuovi giocatori, risposta alle domande nella chat e supporto generale alla community. Collaborazione con il team di moderazione per identificare problemi e migliorare l'esperienza di gioco.</p>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-icon">
-                        <i class="fas fa-code"></i>
-                    </div>
-                    <div class="timeline-content">
-                        <h3 class="editable" data-edit="text">Sviluppatore Plugin - Charlie Roleplay</h3>
-                        <span class="date editable" data-edit="text">2020 - 2021</span>
-                        <p class="editable" data-edit="text">Creazione e manutenzione di plugin personalizzati per migliorare l'esperienza roleplay sul server. Implementazione di nuove funzionalità e correzione di bug.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Competenze -->
-    <section id="competenze" class="skills section-container" data-section-id="competenze">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">Le Mie Competenze</h2>
-            <div class="skills-container editable-container" data-edit="skills">
-                <div class="skill-box" data-skill-id="1">
-                    <div class="skill-title">
-                        <div class="skill-img">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h3 class="editable" data-edit="text">Gestione Community</h3>
-                    </div>
-                    <div class="skill-bar">
-                        <span class="skill-per editable" data-edit="skill" style="width: 90%;">
-                            <span class="tooltip">90%</span>
-                        </span>
-                    </div>
-                    <div class="skill-actions">
-                        <button class="delete-skill"><i class="fas fa-trash"></i></button>
-                        <button class="edit-skill"><i class="fas fa-pen"></i></button>
-                    </div>
-                </div>
-                <div class="skill-box" data-skill-id="2">
-                    <div class="skill-title">
-                        <div class="skill-img">
-                            <i class="fas fa-gavel"></i>
-                        </div>
-                        <h3 class="editable" data-edit="text">Moderazione</h3>
-                    </div>
-                    <div class="skill-bar">
-                        <span class="skill-per editable" data-edit="skill" style="width: 85%;">
-                            <span class="tooltip">85%</span>
-                        </span>
-                    </div>
-                    <div class="skill-actions">
-                        <button class="delete-skill"><i class="fas fa-trash"></i></button>
-                        <button class="edit-skill"><i class="fas fa-pen"></i></button>
-                    </div>
-                </div>
-                <div class="skill-box" data-skill-id="3">
-                    <div class="skill-title">
-                        <div class="skill-img">
-                            <i class="fas fa-code"></i>
-                        </div>
-                        <h3 class="editable" data-edit="text">Plugin Minecraft</h3>
-                    </div>
-                    <div class="skill-bar">
-                        <span class="skill-per editable" data-edit="skill" style="width: 75%;">
-                            <span class="tooltip">75%</span>
-                        </span>
-                    </div>
-                    <div class="skill-actions">
-                        <button class="delete-skill"><i class="fas fa-trash"></i></button>
-                        <button class="edit-skill"><i class="fas fa-pen"></i></button>
-                    </div>
-                </div>
-            </div>
-            <div class="add-skill-container">
-                <button id="addSkillBtn" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Aggiungi Competenza
-                </button>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Progetti -->
-    <section id="progetti" class="projects section-container" data-section-id="progetti">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">I Miei Progetti</h2>
-            <div class="projects-grid editable-container" data-edit="projects">
-                <div class="project-card">
-                    <div class="project-img editable" data-edit="image" style="background-image: url('https://via.placeholder.com/400x300')"></div>
-                    <div class="project-content">
-                        <h3 class="editable" data-edit="text">Sistema Economia Roleplay</h3>
-                        <p class="editable" data-edit="text">Sviluppo di un sistema economico completo per il server con lavori, negozi e banche.</p>
-                        <div class="project-tags">
-                            <span class="editable" data-edit="text">Plugin</span>
-                            <span class="editable" data-edit="text">Economia</span>
-                            <span class="editable" data-edit="text">Roleplay</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-card">
-                    <div class="project-img editable" data-edit="image" style="background-image: url('https://via.placeholder.com/400x300')"></div>
-                    <div class="project-content">
-                        <h3 class="editable" data-edit="text">Eventi Speciali</h3>
-                        <p class="editable" data-edit="text">Organizzazione e gestione di eventi tematici mensili con premi e attività per la community.</p>
-                        <div class="project-tags">
-                            <span class="editable" data-edit="text">Eventi</span>
-                            <span class="editable" data-edit="text">Community</span>
-                            <span class="editable" data-edit="text">Gestione</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Testimonianze -->
-    <section id="testimonianze" class="testimonials section-container" data-section-id="testimonianze">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">Testimonianze</h2>
-            <div class="testimonial-container">
-                <div class="testimonial-card">
-                    <div class="testimonial-text editable" data-edit="text">Un moderatore eccezionale che ha sempre mantenuto l'ordine nel server con professionalità e pazienza. Grazie al suo lavoro, la nostra community è diventata un luogo accogliente per tutti i giocatori.</div>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar editable" data-edit="image" style="background-image: url('https://via.placeholder.com/100')"></div>
-                        <div class="testimonial-info">
-                            <h4 class="editable" data-edit="text">Marco Rossi</h4>
-                            <p class="editable" data-edit="text">Proprietario del Server</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-text editable" data-edit="text">I plugin sviluppati hanno trasformato completamente l'esperienza di gioco. Innovativi, stabili e perfettamente integrati con il tema roleplay del server.</div>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar editable" data-edit="image" style="background-image: url('https://via.placeholder.com/100')"></div>
-                        <div class="testimonial-info">
-                            <h4 class="editable" data-edit="text">Laura Bianchi</h4>
-                            <p class="editable" data-edit="text">Admin del Server</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Risultati -->
-    <section id="risultati" class="achievements section-container" data-section-id="risultati">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">Risultati</h2>
-            <div class="achievements-container">
-                <div class="achievement-item">
-                    <div class="achievement-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="achievement-number editable" data-edit="text">500+</div>
-                    <div class="achievement-title editable" data-edit="text">Giocatori Assistiti</div>
-                </div>
-                <div class="achievement-item">
-                    <div class="achievement-icon">
-                        <i class="fas fa-code"></i>
-                    </div>
-                    <div class="achievement-number editable" data-edit="text">15</div>
-                    <div class="achievement-title editable" data-edit="text">Plugin Sviluppati</div>
-                </div>
-                <div class="achievement-item">
-                    <div class="achievement-icon">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <div class="achievement-number editable" data-edit="text">30+</div>
-                    <div class="achievement-title editable" data-edit="text">Eventi Organizzati</div>
-                </div>
-                <div class="achievement-item">
-                    <div class="achievement-icon">
-                        <i class="fas fa-trophy"></i>
-                    </div>
-                    <div class="achievement-number editable" data-edit="text">3</div>
-                    <div class="achievement-title editable" data-edit="text">Premi Staff</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Galleria -->
-    <section id="galleria" class="gallery section-container" data-section-id="galleria">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">Galleria</h2>
-            <div class="gallery-container">
-                <div class="gallery-item">
-                    <img src="https://via.placeholder.com/600x400" alt="Immagine Galleria" class="gallery-image editable" data-edit="image">
-                    <div class="gallery-overlay">
-                        <h3 class="gallery-title editable" data-edit="text">Evento Estivo</h3>
-                        <p class="gallery-description editable" data-edit="text">Grande evento estivo con più di 100 partecipanti</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <img src="https://via.placeholder.com/600x400" alt="Immagine Galleria" class="gallery-image editable" data-edit="image">
-                    <div class="gallery-overlay">
-                        <h3 class="gallery-title editable" data-edit="text">Costruzione Città</h3>
-                        <p class="gallery-description editable" data-edit="text">Progetto di costruzione collaborativa della città principale</p>
-                    </div>
-                </div>
-                <div class="gallery-item">
-                    <img src="https://via.placeholder.com/600x400" alt="Immagine Galleria" class="gallery-image editable" data-edit="image">
-                    <div class="gallery-overlay">
-                        <h3 class="gallery-title editable" data-edit="text">Riunione Staff</h3>
-                        <p class="gallery-description editable" data-edit="text">Incontro mensile dello staff per pianificare nuove attività</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Sezione Contatti -->
-    <section id="contatti" class="contact section-container" data-section-id="contatti">
-        <div class="container">
-            <h2 class="section-title editable" data-edit="text">Contattami</h2>
-            <div class="contact-container">
-                <div class="contact-info editable-container" data-edit="contacts">
-                    <div class="contact-item">
-                        <div class="contact-icon">
-                            <i class="fas fa-envelope"></i>
-                        </div>
-                        <div class="contact-text">
-                            <h3 class="editable" data-edit="text">Email</h3>
-                            <p class="editable" data-edit="text">tuaemail@esempio.com</p>
-                        </div>
-                    </div>
-                    <div class="contact-item">
-                        <div class="contact-icon">
-                            <i class="fab fa-discord"></i>
-                        </div>
-                        <div class="contact-text">
-                            <h3 class="editable" data-edit="text">Discord</h3>
-                            <p class="editable" data-edit="text">TuoUsername#0000</p>
-                        </div>
-                    </div>
-                    <div class="contact-item">
-                        <div class="contact-icon">
-                            <i class="fab fa-minecraft"></i>
-                        </div>
-                        <div class="contact-text">
-                            <h3 class="editable" data-edit="text">Minecraft</h3>
-                            <p class="editable" data-edit="text">TuoUsernameMinecraft</p>
-                        </div>
-                    </div>
-                </div>
-                <form class="contact-form">
-                    <div class="form-group">
-                        <input type="text" placeholder="Nome" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="email" placeholder="Email" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="text" placeholder="Oggetto" required>
-                    </div>
-                    <div class="form-group">
-                        <textarea placeholder="Messaggio" required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Invia Messaggio</button>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <footer>
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <div class="logo editable" data-edit="text">MC<span>Portfolio</span></div>
-                    <p class="editable" data-edit="text">Portfolio professionale per staff Minecraft</p>
-                </div>
-                <div class="footer-links">
-                    <h3 class="editable" data-edit="text">Collegamenti Rapidi</h3>
-                    <ul id="footerLinks">
-                        <!-- I link di navigazione verranno inseriti qui dinamicamente -->
-                    </ul>
-                </div>
-                <div class="footer-social">
-                    <h3 class="editable" data-edit="text">Social</h3>
-                    <div class="social-icons">
-                        <a href="#"><i class="fab fa-discord"></i></a>
-                        <a href="#"><i class="fab fa-twitter"></i></a>
-                        <a href="#"><i class="fab fa-youtube"></i></a>
-                        <a href="#"><i class="fab fa-twitch"></i></a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p class="editable" data-edit="text">&copy; 2025 Portfolio Staff Minecraft. Tutti i diritti riservati.</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Modali -->
-    <!-- Modal di Autenticazione -->
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeAuthModal">&times;</span>
-            <h2>Accesso Richiesto</h2>
-            <div class="edit-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="Inserisci username">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Inserisci password">
-                </div>
-                <div id="authError" style="color: red; margin-bottom: 15px; display: none;"></div>
-                <button class="btn btn-primary" id="loginBtn">Accedi</button>
-            </div>
-        </div>
+      <div class="card">
+        <p style="text-align: center;">💡 I vantaggi sono cosmetici e di qualità di vita. Il gioco rimane <strong>fair</strong> per tutti.</p>
+      </div>
     </div>
+  </div>
 
-    <!-- Modal di Modifica Testo -->
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeEditModal">&times;</span>
-            <h2>Modifica Contenuto</h2>
-            <div class="edit-form">
-                <textarea id="editContent"></textarea>
-                <button class="btn btn-primary" id="saveEditBtn">Salva</button>
-            </div>
+  <!-- Forum Page -->
+  <div id="forum" class="page">
+    <div class="container">
+      <div class="hero">
+        <h2>Forum della community</h2>
+        <p>💬 Condividi idee, reporta bug e proponi eventi Lifesteal.</p>
+      </div>
+
+      <div class="card" id="forumCreatePost" style="display:none">
+        <h3>Crea un nuovo post</h3>
+        <div class="form-group">
+          <input type="text" id="postTitle" placeholder="Titolo del post" maxlength="100">
+          <small style="color: #8899aa;">Min 5 caratteri, Max 100</small>
         </div>
-    </div>
-
-    <!-- Modal di Modifica Competenza -->
-    <div id="skillModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeSkillModal">&times;</span>
-            <h2>Modifica Competenza</h2>
-            <div class="edit-form">
-                <div class="form-group">
-                    <label for="skillName">Nome Competenza</label>
-                    <input type="text" id="skillName">
-                </div>
-                <div class="form-group">
-                    <label for="skillIcon">Icona (classe Font Awesome)</label>
-                    <input type="text" id="skillIcon" placeholder="fa-users">
-                </div>
-                <div class="form-group">
-                    <label for="skillLevel">Livello (0-100%)</label>
-                    <input type="range" id="skillLevel" min="0" max="100" value="75">
-                    <span id="skillLevelValue">75%</span>
-                </div>
-                <button id="saveSkillBtn" class="btn btn-primary">Salva</button>
-            </div>
+        <div class="form-group">
+          <textarea id="postContent" placeholder="Scrivi qui il contenuto..." maxlength="1000"></textarea>
+          <small style="color: #8899aa;">Min 10 caratteri, Max 1000</small>
         </div>
-    </div>
+        <button class="btn btn-primary" onclick="createPost()">➕ Pubblica</button>
+      </div>
 
-    <!-- Modal di Nuova Competenza -->
-    <div id="newSkillModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeNewSkillModal">&times;</span>
-            <h2>Aggiungi Nuova Competenza</h2>
-            <div class="edit-form">
-                <div class="form-group">
-                    <label for="newSkillName">Nome Competenza</label>
-                    <input type="text" id="newSkillName" placeholder="Es. Sviluppo Web">
-                </div>
-                <div class="form-group">
-                    <label for="newSkillIcon">Icona (classe Font Awesome)</label>
-                    <input type="text" id="newSkillIcon" placeholder="fa-code">
-                </div>
-                <div class="form-group">
-                    <label for="newSkillLevel">Livello (0-100%)</label>
-                    <input type="range" id="newSkillLevel" min="0" max="100" value="75">
-                    <span id="newSkillLevelValue">75%</span>
-                </div>
-                <button id="addNewSkillBtn" class="btn btn-primary">Aggiungi</button>
-            </div>
+      <div class="card">
+        <h3>Post della community</h3>
+        <div class="form-group">
+          <input type="text" id="searchPosts" placeholder="🔍 Cerca post per titolo, contenuto o autore..." oninput="renderAllPosts()">
         </div>
-    </div>
+        <div id="allPostsList"></div>
+      </div>
 
-    <!-- Notifica di salvataggio -->
-    <div id="saveNotification" class="notification">
-        <i class="fas fa-check-circle"></i> Modifiche salvate con successo!
+      <div class="card" id="userPostsCard" style="display:none">
+        <h3>I tuoi post</h3>
+        <div id="userPostsList"></div>
+      </div>
     </div>
+  </div>
 
-    <script src="script.js"></script>
+  <!-- Admin Page -->
+  <div id="admin" class="page">
+    <div class="container">
+      <!-- Admin Login (se non loggato come admin) -->
+      <div id="adminLoginSection" class="card" style="max-width: 500px; margin: 0 auto;">
+        <h3>🔐 Accesso Admin</h3>
+        <p style="color: #8899aa; margin-bottom: 20px;">Inserisci le credenziali admin per accedere al pannello</p>
+        <div class="form-group">
+          <label>Username Admin</label>
+          <input type="text" id="adminUsername" placeholder="Username">
+        </div>
+        <div class="form-group">
+          <label>Password Admin</label>
+          <input type="password" id="adminPassword" placeholder="Password">
+        </div>
+        <button class="btn btn-primary" onclick="handleAdminLogin()">Accedi al Pannello</button>
+      </div>
+
+      <!-- Admin Panel (visibile solo se loggato) -->
+      <div id="adminPanel" style="display:none">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="color: #00f0ff;">Pannello Admin</h2>
+          <button class="btn-logout" onclick="logoutAdmin()">Esci Admin</button>
+        </div>
+
+        <div class="admin-tabs">
+          <button class="tab-btn active" onclick="showAdminTab('overview')" data-tab="overview">📊 Overview</button>
+          <button class="tab-btn" onclick="showAdminTab('posts')" data-tab="posts">📝 Forum</button>
+          <button class="tab-btn" onclick="showAdminTab('staff')" data-tab="staff">👥 Staff</button>
+          <button class="tab-btn" onclick="showAdminTab('products')" data-tab="products">🛒 Prodotti</button>
+          <button class="tab-btn" onclick="showAdminTab('users')" data-tab="users">👤 Database Utenti</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="admin-tab active">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h3 id="totalPosts">0</h3>
+              <p>Post Totali</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="totalUsers">0</h3>
+              <p>Utenti Forum</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="totalStaff">0</h3>
+              <p>Membri Staff</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="totalProducts">0</h3>
+              <p>Prodotti Store</p>
+            </div>
+          </div>
+          <div class="card" style="margin-top: 30px;">
+            <h3>🛠️ Strumenti Admin</h3>
+            <button class="btn btn-primary" onclick="exportData()" style="width: 100%;">💾 Esporta Tutti i Dati (JSON)</button>
+          </div>
+        </div>
+
+        <!-- Posts Tab -->
+        <div id="posts" class="admin-tab">
+          <div class="card">
+            <h3>📝 Gestione Post del Forum</h3>
+            <div class="form-group">
+              <input type="text" id="adminSearchPosts" placeholder="🔍 Cerca post..." oninput="renderAdminPosts()">
+            </div>
+            <div id="adminPostsList"></div>
+          </div>
+        </div>
+
+        <!-- Staff Tab -->
+        <div id="staff" class="admin-tab">
+          <div class="card">
+            <h3>➕ Aggiungi Membro Staff</h3>
+            <div class="form-group">
+              <label>Nome</label>
+              <input type="text" id="staffUsername" placeholder="Username">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="staffPassword" placeholder="Password">
+            </div>
+            <div class="form-group">
+              <label>Ruolo</label>
+              <select id="staffRole"></select>
+            </div>
+            <button class="btn btn-primary" onclick="addStaff()">Aggiungi Staff</button>
+          </div>
+
+          <div class="card">
+            <h3>👥 Lista Staff</h3>
+            <div class="form-group">
+              <input type="text" id="adminSearchStaff" placeholder="🔍 Cerca staff..." oninput="renderStaffList()">
+            </div>
+            <div id="staffList"></div>
+          </div>
+        </div>
+
+        <!-- Products Tab -->
+        <div id="products" class="admin-tab">
+          <div class="card">
+            <h3>➕ Aggiungi Prodotto</h3>
+            <div class="form-group">
+              <label>Nome Prodotto</label>
+              <input type="text" id="productName" placeholder="VIP Gold">
+            </div>
+            <div class="form-group">
+              <label>Prezzo (€)</label>
+              <input type="number" id="productPrice" placeholder="14.99" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>Features (una per riga)</label>
+              <textarea id="productFeatures" placeholder="Kit potenziato&#10;Slot riservato&#10;Particles esclusive"></textarea>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="productFeatured"> Prodotto in evidenza
+              </label>
+            </div>
+            <button class="btn btn-primary" onclick="addProduct()">Aggiungi Prodotto</button>
+          </div>
+
+          <div class="card">
+            <h3>🛒 Lista Prodotti</h3>
+            <div class="form-group">
+              <input type="text" id="adminSearchProducts" placeholder="🔍 Cerca prodotti..." oninput="renderProductsList()">
+            </div>
+            <div id="productsList"></div>
+          </div>
+        </div>
+
+        <!-- Users Database Tab -->
+        <div id="users" class="admin-tab">
+          <div class="card">
+            <h3>👤 Database Utenti Forum</h3>
+            <p style="color: #8899aa; margin-bottom: 20px;">Gestisci tutti gli utenti registrati al forum</p>
+            <div class="form-group">
+              <input type="text" id="adminSearchUsers" placeholder="🔍 Cerca utenti..." oninput="renderUsersList()">
+            </div>
+            <div id="usersList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roles Management Page -->
+  <div id="roles" class="page">
+    <div class="container">
+      <div class="hero">
+        <h2>🎭 Gestione Ruoli e Permessi</h2>
+        <p>Crea e configura i ruoli con i loro permessi</p>
+      </div>
+
+      <div class="card">
+        <h3>➕ Crea Nuovo Ruolo</h3>
+        <div class="form-group">
+          <label>Nome Ruolo</label>
+          <input type="text" id="roleName" placeholder="Es: Moderatore">
+        </div>
+        <div class="form-group">
+          <label>Colore Badge</label>
+          <select id="roleColor">
+            <option value="admin">Rosso (Admin)</option>
+            <option value="moderator">Arancione (Moderatore)</option>
+            <option value="helper">Cyan (Helper)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Permessi</label>
+          <div id="permissionsCheckboxes"></div>
+        </div>
+        <button class="btn btn-primary" onclick="createRole()">Crea Ruolo</button>
+      </div>
+
+      <div class="card">
+        <h3>🎭 Lista Ruoli</h3>
+        <div id="rolesList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="editPostModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Modifica Post</h3>
+        <button class="close-btn" onclick="closeModal('editPostModal')">×</button>
+      </div>
+      <div class="form-group">
+        <label>Titolo</label>
+        <input type="text" id="editPostTitle">
+      </div>
+      <div class="form-group">
+        <label>Contenuto</label>
+        <textarea id="editPostContent"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveEditPost()">💾 Salva</button>
+    </div>
+  </div>
+
+  <div id="replyPostModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Rispondi al Post</h3>
+        <button class="close-btn" onclick="closeModal('replyPostModal')">×</button>
+      </div>
+      <div class="post-preview" id="replyPostPreview"></div>
+      <div class="form-group">
+        <label>La tua risposta</label>
+        <textarea id="replyContent" placeholder="Scrivi la tua risposta..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveReply()">📤 Invia Risposta</button>
+    </div>
+  </div>
+
+  <div id="editStaffModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Modifica Staff</h3>
+        <button class="close-btn" onclick="closeModal('editStaffModal')">×</button>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="editStaffUsername">
+      </div>
+      <div class="form-group">
+        <label>Password (lascia vuoto per non modificare)</label>
+        <input type="password" id="editStaffPassword" placeholder="Nuova password">
+      </div>
+      <div class="form-group">
+        <label>Ruolo</label>
+        <select id="editStaffRole"></select>
+      </div>
+      <button class="btn btn-primary" onclick="saveEditStaff()">💾 Salva</button>
+    </div>
+  </div>
+
+  <div id="editProductModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Modifica Prodotto</h3>
+        <button class="close-btn" onclick="closeModal('editProductModal')">×</button>
+      </div>
+      <div class="form-group">
+        <label>Nome Prodotto</label>
+        <input type="text" id="editProductName">
+      </div>
+      <div class="form-group">
+        <label>Prezzo (€)</label>
+        <input type="number" id="editProductPrice" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Features (una per riga)</label>
+        <textarea id="editProductFeatures"></textarea>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="editProductFeatured"> Prodotto in evidenza
+        </label>
+      </div>
+      <button class="btn btn-primary" onclick="saveEditProduct()">💾 Salva</button>
+    </div>
+  </div>
+
+  <div id="editRoleModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Modifica Ruolo</h3>
+        <button class="close-btn" onclick="closeModal('editRoleModal')">×</button>
+      </div>
+      <div class="form-group">
+        <label>Nome Ruolo</label>
+        <input type="text" id="editRoleName">
+      </div>
+      <div class="form-group">
+        <label>Colore Badge</label>
+        <select id="editRoleColor">
+          <option value="admin">Rosso (Admin)</option>
+          <option value="moderator">Arancione (Moderatore)</option>
+          <option value="helper">Cyan (Helper)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Permessi</label>
+        <div id="editPermissionsCheckboxes"></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveEditRole()">💾 Salva</button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>&copy; 2025 LuminosMC - Tutti i diritti riservati</p>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>

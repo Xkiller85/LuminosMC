@@ -1,1284 +1,1595 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Definizione delle sezioni disponibili
-    const availableSections = [
-        { id: "home", name: "Home", type: "home" },
-        { id: "esperienza", name: "Esperienza", type: "experience" },
-        { id: "competenze", name: "Competenze", type: "skills" },
-        { id: "progetti", name: "Progetti", type: "projects" },
-        { id: "contatti", name: "Contatti", type: "contact" },
-        { id: "testimonianze", name: "Testimonianze", type: "testimonials" },
-        { id: "risultati", name: "Risultati", type: "achievements" },
-        { id: "galleria", name: "Galleria", type: "gallery" }
-    ];
-
-    // Database utenti
-    const defaultUsers = [
-        { username: "Xkiller85", password: "sonokiller", role: "owner" }
-    ];
-
-    // Elementi DOM
-    const editModeBtn = document.getElementById('editModeBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const authModal = document.getElementById('authModal');
-    const closeAuthModal = document.getElementById('closeAuthModal');
-    const loginBtn = document.getElementById('loginBtn');
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const authError = document.getElementById('authError');
-    const editModal = document.getElementById('editModal');
-    const closeEditModal = document.getElementById('closeEditModal');
-    const editContent = document.getElementById('editContent');
-    const saveEditBtn = document.getElementById('saveEditBtn');
-    const skillModal = document.getElementById('skillModal');
-    const closeSkillModal = document.getElementById('closeSkillModal');
-    const skillName = document.getElementById('skillName');
-    const skillIcon = document.getElementById('skillIcon');
-    const skillLevel = document.getElementById('skillLevel');
-    const skillLevelValue = document.getElementById('skillLevelValue');
-    const saveSkillBtn = document.getElementById('saveSkillBtn');
-    const newSkillModal = document.getElementById('newSkillModal');
-    const closeNewSkillModal = document.getElementById('closeNewSkillModal');
-    const newSkillName = document.getElementById('newSkillName');
-    const newSkillIcon = document.getElementById('newSkillIcon');
-    const newSkillLevel = document.getElementById('newSkillLevel');
-    const newSkillLevelValue = document.getElementById('newSkillLevelValue');
-    const addNewSkillBtn = document.getElementById('addNewSkillBtn');
-    const addSkillBtn = document.getElementById('addSkillBtn');
-    const saveNotification = document.getElementById('saveNotification');
-    const saveColorsBtn = document.getElementById('saveColorsBtn');
-    const burger = document.getElementById('burger');
-    const navLinks = document.getElementById('navLinks');
-    const activeSectionsList = document.getElementById('activeSectionsList');
-    const addSectionSelect = document.getElementById('addSectionSelect');
-    const footerLinks = document.getElementById('footerLinks');
-    const sectionManager = document.getElementById('sectionManager');
-    const colorPickerContainer = document.querySelector('.color-picker-container');
-
-    // Stato dell'applicazione
-    let editMode = false;
-    let isAuthenticated = false;
-    let currentUser = null;
-    let currentEditElement = null;
-    let currentSkillBox = null;
-    let activeSections = ["home", "esperienza", "competenze", "progetti", "contatti"];
-    let users = loadUsers();
-
-    // Carica i dati salvati
-    loadSavedData();
-
-    // Inizializza l'interfaccia
-    updateNavigation();
-    updateSectionVisibility();
-    updateSectionManager();
-    setupTimelineItemActions();
-    setupSocialLinkEditing();
-
-    // Posiziona i pannelli di modifica
-    positionEditPanels();
-
-    // Event Listeners
-    editModeBtn.addEventListener('click', toggleEditMode);
-    logoutBtn.addEventListener('click', handleLogout);
-    closeAuthModal.addEventListener('click', () => authModal.style.display = 'none');
-    loginBtn.addEventListener('click', handleLogin);
-    closeEditModal.addEventListener('click', () => editModal.style.display = 'none');
-    saveEditBtn.addEventListener('click', saveEdit);
-    closeSkillModal.addEventListener('click', () => skillModal.style.display = 'none');
-    saveSkillBtn.addEventListener('click', saveSkill);
-    closeNewSkillModal.addEventListener('click', () => newSkillModal.style.display = 'none');
-    addNewSkillBtn.addEventListener('click', saveNewSkill);
-    addSkillBtn.addEventListener('click', showNewSkillModal);
-    saveColorsBtn.addEventListener('click', saveColors);
-    burger.addEventListener('click', toggleMobileMenu);
-    addSectionSelect.addEventListener('change', handleAddSection);
-
-    // Aggiungi event listener per spostare i pannelli di modifica
-    document.addEventListener('mousedown', startDragPanel);
-
-    // Aggiungi event listener per gli elementi editabili
-    document.addEventListener('click', function(e) {
-        if (!editMode) return;
-
-        // Gestione click su elementi editabili
-        if (e.target.closest('.editable')) {
-            handleEditableClick(e);
-        }
-
-        // Gestione click su pulsanti di eliminazione competenze
-        if (e.target.closest('.delete-skill')) {
-            handleDeleteSkill(e);
-        }
-
-        // Gestione click su pulsanti di modifica competenze
-        if (e.target.closest('.edit-skill')) {
-            handleEditSkill(e);
-        }
-
-        // Gestione click su pulsanti di eliminazione timeline
-        if (e.target.closest('.delete-timeline-item')) {
-            handleDeleteTimelineItem(e);
-        }
-
-        // Gestione click su link social per modifica URL
-        if (e.target.closest('.social-icons a') && editMode) {
-            handleSocialLinkEdit(e);
-        }
-    });
-
-    // Aggiorna il valore visualizzato del livello di competenza
-    skillLevel.addEventListener('input', function() {
-        skillLevelValue.textContent = this.value + '%';
-    });
-
-    newSkillLevel.addEventListener('input', function() {
-        newSkillLevelValue.textContent = this.value + '%';
-    });
-
-    // Funzione per caricare gli utenti dal localStorage o usare quelli predefiniti
-    function loadUsers() {
-        const savedUsers = localStorage.getItem("portfolioUsers");
-        return savedUsers ? JSON.parse(savedUsers) : defaultUsers;
-    }
-
-    // Funzione per salvare gli utenti nel localStorage
-    function saveUsers() {
-        localStorage.setItem("portfolioUsers", JSON.stringify(users));
-    }
-
-    // Funzioni per posizionare i pannelli di modifica
-    function positionEditPanels() {
-        // Posiziona il pannello di gestione sezioni
-        if (sectionManager) {
-            sectionManager.style.position = 'fixed';
-            sectionManager.style.top = '80px';
-            sectionManager.style.right = '20px';
-            sectionManager.style.zIndex = '1000';
-            sectionManager.style.display = 'none';
-        }
-
-        // Posiziona il color picker
-        if (colorPickerContainer) {
-            colorPickerContainer.style.position = 'fixed';
-            colorPickerContainer.style.top = '80px';
-            colorPickerContainer.style.left = '20px';
-            colorPickerContainer.style.zIndex = '1000';
-            colorPickerContainer.style.display = 'none';
-        }
-    }
-
-    // Funzione per iniziare il trascinamento dei pannelli
-    function startDragPanel(e) {
-        const panel = e.target.closest('.section-manager, .color-picker-container');
-        if (!panel || !editMode) return;
-
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') {
-            return;
-        }
-
-        let offsetX = e.clientX - panel.getBoundingClientRect().left;
-        let offsetY = e.clientY - panel.getBoundingClientRect().top;
-        
-        function dragPanel(e) {
-            panel.style.left = (e.clientX - offsetX) + 'px';
-            panel.style.top = (e.clientY - offsetY) + 'px';
-        }
-        
-        function stopDragPanel() {
-            document.removeEventListener('mousemove', dragPanel);
-            document.removeEventListener('mouseup', stopDragPanel);
-        }
-        
-        document.addEventListener('mousemove', dragPanel);
-        document.addEventListener('mouseup', stopDragPanel);
-    }
-
-    function loadSavedData() {
-        // Carica lo stato di autenticazione
-        const authState = localStorage.getItem("isAuthenticated");
-        const savedUser = localStorage.getItem("currentUser");
-        
-        if (authState === "true" && savedUser) {
-            isAuthenticated = true;
-            currentUser = JSON.parse(savedUser);
-            logoutBtn.style.display = 'block';
-        }
-
-        // Carica le sezioni attive
-        const savedSections = localStorage.getItem("activeSections");
-        if (savedSections) {
-            activeSections = JSON.parse(savedSections);
-        }
-
-        // Carica i colori salvati
-        const savedColors = localStorage.getItem("portfolioColors");
-        if (savedColors) {
-            const colors = JSON.parse(savedColors);
-            Object.entries(colors).forEach(([key, value]) => {
-                document.documentElement.style.setProperty(`--${key}`, value);
-                const colorInput = document.getElementById(`color-${key}`);
-                if (colorInput) {
-                    colorInput.value = value;
-                }
-            });
-        }
-
-        // Carica i contenuti salvati
-        const savedContent = localStorage.getItem("portfolioContent");
-        if (savedContent) {
-            try {
-                const content = JSON.parse(savedContent);
-                
-                // Ripristina i contenuti editabili
-                document.querySelectorAll('.editable[data-edit="text"]').forEach(el => {
-                    const id = el.id || generateUniqueId(el);
-                    el.id = id;
-                    if (content[id]) {
-                        el.innerHTML = content[id];
-                    }
-                });
-
-                // Ripristina le immagini
-                document.querySelectorAll('.editable[data-edit="image"]').forEach(el => {
-                    const id = el.id || generateUniqueId(el);
-                    el.id = id;
-                    if (content[id]) {
-                        if (el.tagName === 'IMG') {
-                            el.src = content[id];
-                        } else {
-                            el.style.backgroundImage = `url('${content[id]}')`;
-                        }
-                    }
-                });
-
-                // Ripristina gli URL dei social
-                document.querySelectorAll('.social-icons a').forEach(el => {
-                    const id = el.id || generateUniqueId(el);
-                    el.id = id;
-                    if (content[id]) {
-                        el.href = content[id];
-                    }
-                });
-            } catch (e) {
-                console.error("Errore nel caricamento dei contenuti salvati:", e);
-            }
-        }
-
-        // Carica le competenze salvate
-        const savedSkills = localStorage.getItem("portfolioSkills");
-        if (savedSkills) {
-            try {
-                const skills = JSON.parse(savedSkills);
-                const skillsContainer = document.querySelector(".skills-container");
-                
-                if (skillsContainer && skills.length > 0) {
-                    // Rimuovi le competenze predefinite
-                    skillsContainer.innerHTML = '';
-                    
-                    // Aggiungi le competenze salvate
-                    skills.forEach(skill => {
-                        const skillBox = document.createElement("div");
-                        skillBox.className = "skill-box";
-                        skillBox.dataset.skillId = skill.id;
-                        skillBox.innerHTML = `
-                            <div class="skill-title">
-                                <div class="skill-img">
-                                    <i class="${skill.icon}"></i>
-                                </div>
-                                <h3 class="editable" data-edit="text">${skill.name}</h3>
-                            </div>
-                            <div class="skill-bar">
-                                <span class="skill-per editable" data-edit="skill" style="width: ${skill.level}%;">
-                                    <span class="tooltip">${skill.level}%</span>
-                                </span>
-                            </div>
-                            <div class="skill-actions">
-                                <button class="delete-skill"><i class="fas fa-trash"></i></button>
-                                <button class="edit-skill"><i class="fas fa-pen"></i></button>
-                            </div>
-                        `;
-                        skillsContainer.appendChild(skillBox);
-                    });
-                }
-            } catch (e) {
-                console.error("Errore nel caricamento delle competenze salvate:", e);
-            }
-        }
-    }
-
-    // Genera un ID unico per gli elementi senza ID
-    function generateUniqueId(element) {
-        const type = element.dataset.edit || 'element';
-        const timestamp = new Date().getTime();
-        const random = Math.floor(Math.random() * 1000);
-        return `${type}-${timestamp}-${random}`;
-    }
-
-    // Salva tutti i contenuti
-    function saveAllContent() {
-        // Salva i contenuti editabili
-        const content = {};
-        
-        // Salva i testi
-        document.querySelectorAll('.editable[data-edit="text"]').forEach(el => {
-            const id = el.id || generateUniqueId(el);
-            el.id = id;
-            content[id] = el.innerHTML;
-        });
-        
-        // Salva le immagini
-        document.querySelectorAll('.editable[data-edit="image"]').forEach(el => {
-            const id = el.id || generateUniqueId(el);
-            el.id = id;
-            if (el.tagName === 'IMG') {
-                content[id] = el.src;
-            } else {
-                content[id] = el.style.backgroundImage.replace(/url$$['"]?(.*?)['"]?$$/i, '$1');
-            }
-        });
-
-        // Salva gli URL dei social
-        document.querySelectorAll('.social-icons a').forEach(el => {
-            const id = el.id || generateUniqueId(el);
-            el.id = id;
-            content[id] = el.href;
-        });
-        
-        localStorage.setItem("portfolioContent", JSON.stringify(content));
-        
-        // Salva le competenze
-        const skills = [];
-        document.querySelectorAll('.skill-box').forEach(box => {
-            const nameEl = box.querySelector('h3');
-            const iconEl = box.querySelector('.skill-img i');
-            const perEl = box.querySelector('.skill-per');
-            
-            if (nameEl && iconEl && perEl) {
-                skills.push({
-                    id: box.dataset.skillId || Date.now().toString(),
-                    name: nameEl.textContent,
-                    icon: iconEl.className,
-                    level: parseInt(perEl.style.width) || 0
-                });
-            }
-        });
-        
-        localStorage.setItem("portfolioSkills", JSON.stringify(skills));
-        
-        showSaveNotification();
-    }
-
-    function toggleEditMode() {
-        if (!editMode && !isAuthenticated) {
-            // Se non siamo in modalità modifica e non siamo autenticati, mostra il modal di autenticazione
-            authModal.style.display = 'block';
-            // Resetta i campi di input per sicurezza
-            usernameInput.value = '';
-            passwordInput.value = '';
-            return;
-        }
-
-        editMode = !editMode;
-        document.body.classList.toggle('edit-mode', editMode);
-        editModeBtn.classList.toggle('active', editMode);
-        editModeBtn.innerHTML = editMode ? 
-            '<i class="fas fa-times"></i> Esci dalla Modalità Modifica' : 
-            '<i class="fas fa-edit"></i> Modalità Modifica';
-        
-        // Mostra/nascondi i pannelli di modifica
-        if (sectionManager) {
-            sectionManager.style.display = editMode ? 'block' : 'none';
-        }
-        if (colorPickerContainer) {
-            colorPickerContainer.style.display = editMode ? 'block' : 'none';
-        }
-        
-        // Aggiorna i pulsanti di eliminazione nella timeline
-        setupTimelineItemActions();
-    }
-
-    function handleLogin() {
-        const username = usernameInput.value;
-        const password = passwordInput.value;
-
-        const user = users.find(u => u.username === username && u.password === password);
-
-        if (user) {
-            isAuthenticated = true;
-            currentUser = user;
-            localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("currentUser", JSON.stringify(user));
-            authModal.style.display = 'none';
-            logoutBtn.style.display = 'block';
-            toggleEditMode();
-            authError.style.display = 'none';
-            
-            // Mostra pannello admin se l'utente è owner
-            if (user.role === 'owner') {
-                showAdminPanel();
-            }
-            
-            // Pulisci i campi di input dopo il login
-            usernameInput.value = '';
-            passwordInput.value = '';
-        } else {
-            authError.textContent = "Username o password non validi";
-            authError.style.display = 'block';
-        }
-    }
-
-    function handleLogout() {
-        isAuthenticated = false;
-        currentUser = null;
-        editMode = false;
-        document.body.classList.remove('edit-mode');
-        editModeBtn.classList.remove('active');
-        editModeBtn.innerHTML = '<i class="fas fa-edit"></i> Modalità Modifica';
-        logoutBtn.style.display = 'none';
-        
-        // Nascondi pannelli di modifica
-        if (sectionManager) {
-            sectionManager.style.display = 'none';
-        }
-        if (colorPickerContainer) {
-            colorPickerContainer.style.display = 'none';
-        }
-        
-        // Nascondi pannello admin
-        hideAdminPanel();
-        
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("currentUser");
-    }
-
-    function handleEditableClick(e) {
-        const target = e.target.closest('.editable');
-        if (!target) return;
-
-        const editType = target.dataset.edit;
-
-        if (editType === "text") {
-            currentEditElement = target;
-            editContent.value = target.innerHTML;
-            editModal.style.display = 'block';
-        } else if (editType === "image") {
-            if (target.tagName === 'IMG') {
-                const imageUrl = prompt("Inserisci l'URL dell'immagine:", target.src);
-                if (imageUrl) {
-                    target.src = imageUrl;
-                    saveAllContent();
-                }
-            } else {
-                const imageUrl = prompt("Inserisci l'URL dell'immagine:", target.style.backgroundImage.replace(/url$$['"]?(.*?)['"]?$$/i, '$1'));
-                if (imageUrl) {
-                    target.style.backgroundImage = `url('${imageUrl}')`;
-                    saveAllContent();
-                }
-            }
-        }
-    }
-
-    function saveEdit() {
-        if (currentEditElement) {
-            currentEditElement.innerHTML = editContent.value;
-            editModal.style.display = 'none';
-            saveAllContent();
-        }
-    }
-
-    function handleDeleteSkill(e) {
-        const skillBox = e.target.closest('.skill-box');
-        if (confirm("Sei sicuro di voler eliminare questa competenza?")) {
-            skillBox.remove();
-            saveAllContent();
-        }
-    }
-
-    function handleEditSkill(e) {
-        const skillBox = e.target.closest('.skill-box');
-        const skillNameElement = skillBox.querySelector('h3');
-        const skillIconElement = skillBox.querySelector('.skill-img i');
-        const skillPerElement = skillBox.querySelector('.skill-per');
-
-        if (skillNameElement && skillIconElement && skillPerElement) {
-            skillName.value = skillNameElement.textContent;
-            
-            // Estrai la classe dell'icona (es. "fas fa-user-plus" -> "fa-user-plus")
-            const iconClasses = skillIconElement.className.split(' ');
-            // Cerca la classe che inizia con "fa-" ma non è "fas", "far", ecc.
-            const iconClass = iconClasses.find(cls => cls.startsWith('fa-') && !['fas', 'far', 'fab', 'fal', 'fad'].includes(cls));
-            
-            skillIcon.value = iconClass || '';
-            skillLevel.value = parseInt(skillPerElement.style.width) || 0;
-            skillLevelValue.textContent = skillLevel.value + '%';
-            currentSkillBox = skillBox;
-            skillModal.style.display = 'block';
-        }
-    }
-
-    function saveSkill() {
-        if (currentSkillBox) {
-            const skillNameElement = currentSkillBox.querySelector('h3');
-            const skillIconElement = currentSkillBox.querySelector('.skill-img i');
-            const skillPerElement = currentSkillBox.querySelector('.skill-per');
-            const tooltipElement = currentSkillBox.querySelector('.tooltip');
-
-            if (skillNameElement && skillIconElement && skillPerElement && tooltipElement) {
-                skillNameElement.textContent = skillName.value;
-                
-                // Usa fas come prefisso per Font Awesome (compatibile con il tuo HTML)
-                skillIconElement.className = `fas ${skillIcon.value}`;
-                skillPerElement.style.width = `${skillLevel.value}%`;
-                tooltipElement.textContent = `${skillLevel.value}%`;
-
-                skillModal.style.display = 'none';
-                saveAllContent();
-            }
-        }
-    }
-
-    function showNewSkillModal() {
-        if (!editMode) {
-            alert("Attiva la modalità di modifica per aggiungere competenze");
-            return;
-        }
-
-        newSkillName.value = '';
-        newSkillIcon.value = '';
-        newSkillLevel.value = 75;
-        newSkillLevelValue.textContent = '75%';
-        newSkillModal.style.display = 'block';
-    }
-
-    function saveNewSkill() {
-        if (!newSkillName.value) {
-            alert("Inserisci un nome per la competenza");
-            return;
-        }
-
-        const skillsContainer = document.querySelector(".skills-container");
-        if (!skillsContainer) return;
-
-        const newSkillId = Date.now(); // ID unico basato sul timestamp
-
-        const newSkill = document.createElement("div");
-        newSkill.className = "skill-box";
-        newSkill.dataset.skillId = newSkillId.toString();
-        newSkill.innerHTML = `
-            <div class="skill-title">
-                <div class="skill-img">
-                    <i class="fas ${newSkillIcon.value || "fa-star"}"></i>
-                </div>
-                <h3 class="editable" data-edit="text">${newSkillName.value}</h3>
-            </div>
-            <div class="skill-bar">
-                <span class="skill-per editable" data-edit="skill" style="width: ${newSkillLevel.value}%;">
-                    <span class="tooltip">${newSkillLevel.value}%</span>
-                </span>
-            </div>
-            <div class="skill-actions">
-                <button class="delete-skill"><i class="fas fa-trash"></i></button>
-                <button class="edit-skill"><i class="fas fa-pen"></i></button>
-            </div>
-        `;
-
-        skillsContainer.appendChild(newSkill);
-        newSkillModal.style.display = 'none';
-        saveAllContent();
-    }
-
-    function saveColors() {
-        const colors = {};
-        document.querySelectorAll('.color-option input[type="color"]').forEach(input => {
-            const colorName = input.id.replace('color-', '');
-            colors[colorName] = input.value;
-            document.documentElement.style.setProperty(`--${colorName}`, input.value);
-        });
-
-        localStorage.setItem("portfolioColors", JSON.stringify(colors));
-        showSaveNotification();
-    }
-
-    function showSaveNotification() {
-        saveNotification.classList.add('show');
-        setTimeout(() => {
-            saveNotification.classList.remove('show');
-        }, 3000);
-    }
-
-    function toggleMobileMenu() {
-        navLinks.classList.toggle('nav-active');
-        burger.classList.toggle('toggle');
-    }
-
-    function updateNavigation() {
-        // Aggiorna i link di navigazione
-        navLinks.innerHTML = '';
-        footerLinks.innerHTML = '';
-
-        availableSections.forEach((section, index) => {
-            if (activeSections.includes(section.id)) {
-                const navItem = document.createElement('li');
-                
-                // Aggiungi link
-                const link = document.createElement('a');
-                link.href = `#${section.id}`;
-                link.textContent = section.name;
-                navItem.appendChild(link);
-                
-                // Aggiungi separatore | dopo il link (tranne l'ultimo)
-                if (index < activeSections.length - 1) {
-                    const separator = document.createElement('span');
-                    separator.className = 'nav-separator';
-                    separator.innerHTML = '&nbsp;|&nbsp;';
-                    navItem.appendChild(separator);
-                }
-                
-                navLinks.appendChild(navItem);
-
-                const footerItem = document.createElement('li');
-                footerItem.innerHTML = `<a href="#${section.id}">${section.name}</a>`;
-                footerLinks.appendChild(footerItem);
-            }
-        });
-    }
-
-    function updateSectionVisibility() {
-        // Mostra/nascondi sezioni in base all'array activeSections
-        document.querySelectorAll('.section-container').forEach(section => {
-            const sectionId = section.getAttribute('data-section-id');
-            if (activeSections.includes(sectionId)) {
-                section.classList.remove('hidden');
-            } else {
-                section.classList.add('hidden');
-            }
-        });
-    }
-
-    function updateSectionManager() {
-        // Aggiorna la lista delle sezioni attive
-        activeSectionsList.innerHTML = '';
-        activeSections.forEach(sectionId => {
-            const section = availableSections.find(s => s.id === sectionId);
-            if (section) {
-                const listItem = document.createElement('li');
-                listItem.innerHTML = `
-                    ${section.name}
-                    ${section.id !== 'home' ? `<button class="btn-icon" data-section-id="${section.id}" title="Rimuovi sezione"><i class="fas fa-trash"></i></button>` : ''}
-                `;
-                activeSectionsList.appendChild(listItem);
-
-                // Aggiungi event listener per il pulsante di rimozione
-                const removeBtn = listItem.querySelector('.btn-icon');
-                if (removeBtn) {
-                    removeBtn.addEventListener('click', function() {
-                        handleRemoveSection(this.getAttribute('data-section-id'));
-                    });
-                }
-            }
-        });
-
-        // Aggiorna il select per aggiungere sezioni
-        addSectionSelect.innerHTML = '<option value="" disabled selected>Seleziona una sezione da aggiungere</option>';
-        availableSections.forEach(section => {
-            if (!activeSections.includes(section.id)) {
-                const option = document.createElement('option');
-                option.value = section.type;
-                option.textContent = section.name;
-                addSectionSelect.appendChild(option);
-            }
-        });
-    }
-
-    function handleAddSection(e) {
-        const sectionType = e.target.value;
-        if (!sectionType) return;
-
-        const section = availableSections.find(s => s.type === sectionType);
-        if (!section) return;
-
-        activeSections.push(section.id);
-        localStorage.setItem("activeSections", JSON.stringify(activeSections));
-        
-        updateNavigation();
-        updateSectionVisibility();
-        updateSectionManager();
-        showSaveNotification();
-        
-        // Reset select
-        e.target.value = '';
-    }
-
-    function handleRemoveSection(sectionId) {
-        if (sectionId === "home") {
-            alert("La sezione Home non può essere rimossa");
-            return;
-        }
-
-        activeSections = activeSections.filter(id => id !== sectionId);
-        localStorage.setItem("activeSections", JSON.stringify(activeSections));
-        
-        updateNavigation();
-        updateSectionVisibility();
-        updateSectionManager();
-        saveAllContent();
-    }
-
-    // Funzioni per la gestione della timeline
-    function setupTimelineItemActions() {
-        if (!editMode) return;
-
-        // Aggiungi pulsanti di eliminazione agli elementi della timeline
-        const timelineItems = document.querySelectorAll('.timeline-item');
-        timelineItems.forEach(item => {
-            // Verifica se il pulsante di eliminazione esiste già
-            if (!item.querySelector('.delete-timeline-item')) {
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-timeline-item';
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-                deleteBtn.title = 'Elimina elemento';
-                item.appendChild(deleteBtn);
-            }
-        });
-
-        // Aggiungi pulsante per aggiungere nuovi elementi alla timeline
-        const timeline = document.querySelector('.timeline');
-        if (timeline && !timeline.querySelector('.add-timeline-item')) {
-            const addBtn = document.createElement('button');
-            addBtn.className = 'add-timeline-item btn btn-primary';
-            addBtn.innerHTML = '<i class="fas fa-plus"></i> Aggiungi Esperienza';
-            addBtn.addEventListener('click', addNewTimelineItem);
-            timeline.appendChild(addBtn);
-        }
-    }
-
-    function handleDeleteTimelineItem(e) {
-        const timelineItem = e.target.closest('.timeline-item');
-        if (confirm("Sei sicuro di voler eliminare questa esperienza?")) {
-            timelineItem.remove();
-            saveAllContent();
-        }
-    }
-
-    function addNewTimelineItem() {
-        const timeline = document.querySelector('.timeline');
-        if (!timeline) return;
-
-        const newItem = document.createElement('div');
-        newItem.className = 'timeline-item';
-        newItem.innerHTML = `
-            <div class="timeline-icon">
-                <i class="fas fa-briefcase"></i>
-            </div>
-            <div class="timeline-content">
-                <h3 class="editable" data-edit="text">Nuova Esperienza</h3>
-                <span class="date editable" data-edit="text">Anno - Anno</span>
-                <p class="editable" data-edit="text">Descrizione della nuova esperienza...</p>
-            </div>
-            <button class="delete-timeline-item" title="Elimina elemento">
-                <i class="fas fa-trash"></i>
-            </button>
-        `;
-
-        // Inserisci prima del pulsante di aggiunta
-        const addBtn = timeline.querySelector('.add-timeline-item');
-        timeline.insertBefore(newItem, addBtn);
-        saveAllContent();
-    }
-
-    // Funzioni per la gestione dei social
-    function setupSocialLinkEditing() {
-        const socialIcons = document.querySelectorAll('.social-icons a');
-        socialIcons.forEach(link => {
-            if (!link.id) {
-                link.id = generateUniqueId(link);
-            }
-        });
-    }
-
-    function handleSocialLinkEdit(e) {
-        e.preventDefault();
-        const link = e.target.closest('a');
-        const newUrl = prompt("Inserisci l'URL del social:", link.href);
-        if (newUrl) {
-            link.href = newUrl;
-            saveAllContent();
-        }
-    }
-
-    // Funzioni per la gestione degli utenti (solo per owner)
-    function showAdminPanel() {
-        // Crea il pannello admin se non esiste
-        if (!document.getElementById('adminPanel')) {
-            const adminPanel = document.createElement('div');
-            adminPanel.id = 'adminPanel';
-            adminPanel.className = 'admin-panel';
-            adminPanel.style.position = 'fixed';
-            adminPanel.style.top = '150px';
-            adminPanel.style.right = '20px';
-            adminPanel.style.zIndex = '1000';
-            adminPanel.style.backgroundColor = '#fff';
-            adminPanel.style.padding = '15px';
-            adminPanel.style.borderRadius = '5px';
-            adminPanel.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
-            adminPanel.style.maxWidth = '400px';
-            adminPanel.style.maxHeight = '80vh';
-            adminPanel.style.overflow = 'auto';
-            
-            adminPanel.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="margin: 0;">Pannello Amministratore</h3>
-                    <button id="closeAdminPanel" style="background: none; border: none; cursor: pointer;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="admin-section">
-                    <h4>Gestione Utenti</h4>
-                    <div class="user-list" style="margin-bottom: 10px;">
-                        <table id="userTable" style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Username</th>
-                                    <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Ruolo</th>
-                                    <th style="text-align: left; padding: 5px; border-bottom: 1px solid #ddd;">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Gli utenti verranno inseriti qui dinamicamente -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <button id="addUserBtn" class="btn btn-primary">
-                        <i class="fas fa-user-plus"></i> Aggiungi Utente
-                    </button>
-                </div>
-                <div class="admin-section" style="margin-top: 20px;">
-                    <h4>Esporta/Importa Dati</h4>
-                    <button id="exportDataBtn" class="btn btn-primary" style="margin-right: 10px;">
-                        <i class="fas fa-download"></i> Esporta Dati
-                    </button>
-                    <button id="importDataBtn" class="btn btn-secondary">
-                        <i class="fas fa-upload"></i> Importa Dati
-                    </button>
-                    <input type="file" id="importFileInput" style="display: none;">
-                </div>
-            `;
-            document.body.appendChild(adminPanel);
-
-            // Aggiungi event listener per il pulsante di chiusura
-            document.getElementById('closeAdminPanel').addEventListener('click', () => {
-                adminPanel.style.display = 'none';
-            });
-
-            // Aggiungi event listener per il trascinamento del pannello
-            adminPanel.addEventListener('mousedown', startDragPanel);
-
-            // Popola la tabella degli utenti
-            updateUserTable();
-
-            // Aggiungi event listener per i pulsanti
-            document.getElementById('addUserBtn').addEventListener('click', showAddUserModal);
-            document.getElementById('exportDataBtn').addEventListener('click', exportData);
-            document.getElementById('importDataBtn').addEventListener('click', () => {
-                document.getElementById('importFileInput').click();
-            });
-            document.getElementById('importFileInput').addEventListener('change', importData);
-        } else {
-            document.getElementById('adminPanel').style.display = 'block';
-            updateUserTable();
-        }
-    }
-
-    function hideAdminPanel() {
-        const adminPanel = document.getElementById('adminPanel');
-        if (adminPanel) {
-            adminPanel.style.display = 'none';
-        }
-    }
-
-    function updateUserTable() {
-        const userTableBody = document.querySelector('#userTable tbody');
-        if (!userTableBody) return;
-
-        userTableBody.innerHTML = '';
-        users.forEach(user => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td style="padding: 5px; border-bottom: 1px solid #ddd;">${user.username}</td>
-                <td style="padding: 5px; border-bottom: 1px solid #ddd;">${user.role}</td>
-                <td style="padding: 5px; border-bottom: 1px solid #ddd;">
-                    ${user.username !== 'Xkiller85' ? `
-                        <button class="btn-icon edit-user" data-username="${user.username}" style="margin-right: 5px;">
-                            <i class="fas fa-pen"></i>
-                        </button>
-                        <button class="btn-icon delete-user" data-username="${user.username}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    ` : 'Owner (non modificabile)'}
-                </td>
-            `;
-            userTableBody.appendChild(row);
-        });
-
-        // Aggiungi event listener per i pulsanti di modifica e eliminazione
-        document.querySelectorAll('.edit-user').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const username = this.getAttribute('data-username');
-                editUser(username);
-            });
-        });
-
-        document.querySelectorAll('.delete-user').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const username = this.getAttribute('data-username');
-                deleteUser(username);
-            });
-        });
-    }
-
-    function showAddUserModal() {
-        // Crea il modal se non esiste
-        if (!document.getElementById('userModal')) {
-            const modal = document.createElement('div');
-            modal.id = 'userModal';
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <span class="close-modal" id="closeUserModal">&times;</span>
-                    <h2 id="userModalTitle">Aggiungi Utente</h2>
-                    <div class="edit-form">
-                        <div class="form-group">
-                            <label for="userUsername">Username</label>
-                            <input type="text" id="userUsername">
-                        </div>
-                        <div class="form-group">
-                            <label for="userPassword">Password</label>
-                            <input type="password" id="userPassword">
-                        </div>
-                        <div class="form-group">
-                            <label for="userRole">Ruolo</label>
-                            <select id="userRole">
-                                <option value="editor">Editor</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-primary" id="saveUserBtn">Salva</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            // Aggiungi event listener
-            document.getElementById('closeUserModal').addEventListener('click', () => {
-                document.getElementById('userModal').style.display = 'none';
-            });
-
-            document.getElementById('saveUserBtn').addEventListener('click', saveUser);
-        }
-
-        // Reset form e mostra modal
-        document.getElementById('userModalTitle').textContent = 'Aggiungi Utente';
-        document.getElementById('userUsername').value = '';
-        document.getElementById('userPassword').value = '';
-        document.getElementById('userRole').value = 'editor';
-        document.getElementById('userUsername').disabled = false;
-        document.getElementById('userModal').style.display = 'block';
-    }
-
-    function editUser(username) {
-        const user = users.find(u => u.username === username);
-        if (!user) return;
-
-        document.getElementById('userModalTitle').textContent = 'Modifica Utente';
-        document.getElementById('userUsername').value = user.username;
-        document.getElementById('userUsername').disabled = true;
-        document.getElementById('userPassword').value = '';
-        document.getElementById('userRole').value = user.role;
-        document.getElementById('userModal').style.display = 'block';
-    }
-
-    function saveUser() {
-        const username = document.getElementById('userUsername').value;
-        const password = document.getElementById('userPassword').value;
-        const role = document.getElementById('userRole').value;
-
-        if (!username || !password) {
-            alert('Username e password sono obbligatori');
-            return;
-        }
-
-        // Verifica se stiamo modificando o aggiungendo
-        const existingUserIndex = users.findIndex(u => u.username === username);
-        
-        if (existingUserIndex >= 0) {
-            // Modifica utente esistente
-            users[existingUserIndex].password = password;
-            users[existingUserIndex].role = role;
-        } else {
-            // Aggiungi nuovo utente
-            users.push({
-                username,
-                password,
-                role
-            });
-        }
-
-        // Salva gli utenti
-        saveUsers();
-        
-        // Aggiorna la tabella e chiudi il modal
-        updateUserTable();
-        document.getElementById('userModal').style.display = 'none';
-        showSaveNotification();
-    }
-
-    function deleteUser(username) {
-        if (confirm(`Sei sicuro di voler eliminare l'utente ${username}?`)) {
-            users = users.filter(u => u.username !== username);
-            saveUsers();
-            updateUserTable();
-            showSaveNotification();
-        }
-    }
-
-    // Funzioni per esportare e importare dati
-    function exportData() {
-        const exportData = {
-            users: users,
-            activeSections: activeSections,
-            colors: JSON.parse(localStorage.getItem("portfolioColors") || "{}"),
-            content: JSON.parse(localStorage.getItem("portfolioContent") || "{}"),
-            skills: JSON.parse(localStorage.getItem("portfolioSkills") || "[]")
-        };
-
-        const dataStr = JSON.stringify(exportData);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        
-        const exportFileDefaultName = 'portfolio-data.json';
-        
-        const linkElement = document.createElement('a');
-        linkElement.setAttribute('href', dataUri);
-        linkElement.setAttribute('download', exportFileDefaultName);
-        linkElement.click();
-    }
-
-    function importData(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const importData = JSON.parse(e.target.result);
-                
-                // Importa utenti
-                if (importData.users && Array.isArray(importData.users)) {
-                    // Assicurati che l'utente owner sia sempre presente
-                    const ownerExists = importData.users.some(u => u.username === 'killer' && u.role === 'owner');
-                    if (!ownerExists) {
-                        importData.users.push({
-                            username: 'Xkiller85',
-                            password: 'sonokiller',
-                            role: 'owner'
-                        });
-                    }
-                    users = importData.users;
-                    saveUsers();
-                }
-                
-                // Importa sezioni attive
-                if (importData.activeSections && Array.isArray(importData.activeSections)) {
-                    activeSections = importData.activeSections;
-                    localStorage.setItem("activeSections", JSON.stringify(activeSections));
-                }
-                
-                // Importa colori
-                if (importData.colors && typeof importData.colors === 'object') {
-                    localStorage.setItem("portfolioColors", JSON.stringify(importData.colors));
-                }
-                
-                // Importa contenuti
-                if (importData.content && typeof importData.content === 'object') {
-                    localStorage.setItem("portfolioContent", JSON.stringify(importData.content));
-                }
-                
-                // Importa competenze
-                if (importData.skills && Array.isArray(importData.skills)) {
-                    localStorage.setItem("portfolioSkills", JSON.stringify(importData.skills));
-                }
-                
-                alert('Dati importati con successo! La pagina verrà ricaricata.');
-                location.reload();
-            } catch (error) {
-                alert('Errore durante l\'importazione dei dati: ' + error.message);
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    // Crea il file database.js
-    function createDatabaseFile() {
-        const dbCode = `
-// database.js - Gestione del database utenti per il portfolio
-
-class PortfolioDatabase {
-    constructor() {
-        this.defaultUsers = [
-            { username: "Xkiller85", password: "sonokiller", role: "owner" }
-        ];
-        this.users = this.loadUsers();
-    }
-
-    // Carica gli utenti dal localStorage
-    loadUsers() {
-        const savedUsers = localStorage.getItem("portfolioUsers");
-        return savedUsers ? JSON.parse(savedUsers) : this.defaultUsers;
-    }
-
-    // Salva gli utenti nel localStorage
-    saveUsers() {
-        localStorage.setItem("portfolioUsers", JSON.stringify(this.users));
-    }
-
-    // Ottieni tutti gli utenti
-    getAllUsers() {
-        return this.users;
-    }
-
-    // Ottieni un utente specifico
-    getUser(username) {
-        return this.users.find(u => u.username === username);
-    }
-
-    // Verifica le credenziali di un utente
-    verifyCredentials(username, password) {
-        const user = this.getUser(username);
-        return user && user.password === password ? user : null;
-    }
-
-    // Aggiungi un nuovo utente
-    addUser(username, password, role = "editor") {
-        // Verifica se l'utente esiste già
-        if (this.getUser(username)) {
-            return { success: false, message: "L'utente esiste già" };
-        }
-
-        // Aggiungi il nuovo utente
-        this.users.push({
-            username,
-            password,
-            role
-        });
-
-        this.saveUsers();
-        return { success: true, message: "Utente aggiunto con successo" };
-    }
-
-    // Aggiorna un utente esistente
-    updateUser(username, data) {
-        const userIndex = this.users.findIndex(u => u.username === username);
-        
-        if (userIndex === -1) {
-            return { success: false, message: "Utente non trovato" };
-        }
-
-        // Non permettere di modificare l'utente owner
-        if (username === "Xkiller85" && this.users[userIndex].role === "owner") {
-            return { success: false, message: "Non è possibile modificare l'utente owner" };
-        }
-
-        // Aggiorna i dati dell'utente
-        this.users[userIndex] = {
-            ...this.users[userIndex],
-            ...data
-        };
-
-        this.saveUsers();
-        return { success: true, message: "Utente aggiornato con successo" };
-    }
-
-    // Elimina un utente
-    deleteUser(username) {
-        // Non permettere di eliminare l'utente owner
-        if (username === "Xkiller85") {
-            return { success: false, message: "Non è possibile eliminare l'utente owner" };
-        }
-
-        const initialLength = this.users.length;
-        this.users = this.users.filter(u => u.username !== username);
-        
-        if (this.users.length === initialLength) {
-            return { success: false, message: "Utente non trovato" };
-        }
-
-        this.saveUsers();
-        return { success: true, message: "Utente eliminato con successo" };
-    }
-
-    // Esporta tutti i dati
-    exportData() {
-        return {
-            users: this.users,
-            activeSections: JSON.parse(localStorage.getItem("activeSections") || "[]"),
-            colors: JSON.parse(localStorage.getItem("portfolioColors") || "{}"),
-            content: JSON.parse(localStorage.getItem("portfolioContent") || "{}"),
-            skills: JSON.parse(localStorage.getItem("portfolioSkills") || "[]")
-        };
-    }
-
-    // Importa dati
-    importData(data) {
-        try {
-            // Importa utenti
-            if (data.users && Array.isArray(data.users)) {
-                // Assicurati che l'utente owner sia sempre presente
-                const ownerExists = data.users.some(u => u.username === 'Xkiller85' && u.role === 'owner');
-                if (!ownerExists) {
-                    data.users.push({
-                        username: 'Xkiller85',
-                        password: 'sonokiller',
-                        role: 'owner'
-                    });
-                }
-                this.users = data.users;
-                this.saveUsers();
-            }
-            
-            // Importa sezioni attive
-            if (data.activeSections && Array.isArray(data.activeSections)) {
-                localStorage.setItem("activeSections", JSON.stringify(data.activeSections));
-            }
-            
-            // Importa colori
-            if (data.colors && typeof data.colors === 'object') {
-                localStorage.setItem("portfolioColors", JSON.stringify(data.colors));
-            }
-            
-            // Importa contenuti
-            if (data.content && typeof data.content === 'object') {
-                localStorage.setItem("portfolioContent", JSON.stringify(data.content));
-            }
-            
-            // Importa competenze
-            if (data.skills && Array.isArray(data.skills)) {
-                localStorage.setItem("portfolioSkills", JSON.stringify(data.skills));
-            }
-            
-            return { success: true, message: "Dati importati con successo" };
-        } catch (error) {
-            return { success: false, message: "Errore durante l'importazione: " + error.message };
-        }
-    }
+/* ========================================
+   LUMINOS MC - SCRIPT.JS MIGLIORATO
+   ======================================== */
+
+let currentUser = null;
+let currentAdmin = null;
+let editingId = null;
+let isRegistering = false;
+
+// Paginazione
+let currentPage = 1;
+const postsPerPage = 5;
+
+// Permessi disponibili
+const AVAILABLE_PERMISSIONS = [
+  { id: 'manage_posts', label: 'Gestire Post' },
+  { id: 'manage_staff', label: 'Gestire Staff' },
+  { id: 'manage_products', label: 'Gestire Prodotti' },
+  { id: 'manage_roles', label: 'Gestire Ruoli' },
+  { id: 'view_admin', label: 'Accesso Admin' },
+  { id: 'delete_any_post', label: 'Eliminare Qualsiasi Post' },
+  { id: 'edit_any_post', label: 'Modificare Qualsiasi Post' },
+  { id: 'manage_users', label: 'Gestire Database Utenti' }
+];
+
+/* ========================================
+   PERSISTENT STORAGE FUNCTIONS
+   ======================================== */
+
+async function saveData(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error('Errore nel salvare i dati:', error);
+    return false;
+  }
 }
 
-// Esporta l'istanza del database
-const portfolioDB = new PortfolioDatabase();
-`;
-        return dbCode;
-    }
+async function loadData(key, defaultValue = null) {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : defaultValue;
+  } catch (error) {
+    console.error('Errore nel caricare i dati:', error);
+    return defaultValue;
+  }
+}
 
-    // Crea il file database.js se richiesto
-    if (currentUser && currentUser.role === 'owner') {
-        console.log("File database.js creato e disponibile per l'utente owner");
-        console.log(createDatabaseFile());
+async function deleteData(key) {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.error('Errore nell\'eliminare i dati:', error);
+    return false;
+  }
+}
+
+/* ========================================
+   INITIALIZATION
+   ======================================== */
+
+document.addEventListener('DOMContentLoaded', async function() {
+  await initializeSystem();
+  checkAuth();
+  await loadAllData();
+  renderStore();
+  renderAllPosts();
+  updateStats();
+});
+
+async function initializeSystem() {
+  // Inizializza owner se non esiste
+  const adminUsers = await loadData('admin_users', []);
+  if (adminUsers.length === 0) {
+    const ownerAdmin = {
+      id: 1,
+      username: 'TheMarck_MC',
+      password: '1234',
+      roles: ['owner'],
+      created: new Date().toISOString().split('T')[0]
+    };
+    adminUsers.push(ownerAdmin);
+    await saveData('admin_users', adminUsers);
+  }
+
+  // Inizializza ruoli se non esistono
+  const roles = await loadData('roles', []);
+  if (roles.length === 0) {
+    const defaultRoles = [
+      {
+        id: 'owner',
+        name: 'Owner',
+        color: 'owner',
+        permissions: ['manage_posts', 'manage_staff', 'manage_products', 'manage_roles', 'view_admin', 'delete_any_post', 'edit_any_post', 'manage_users'],
+        system: true
+      },
+      {
+        id: 'admin',
+        name: 'Admin',
+        color: 'admin',
+        permissions: ['manage_posts', 'manage_staff', 'view_admin', 'delete_any_post', 'edit_any_post', 'manage_users'],
+        system: false
+      },
+      {
+        id: 'moderator',
+        name: 'Moderatore',
+        color: 'moderator',
+        permissions: ['manage_posts', 'view_admin', 'delete_any_post'],
+        system: false
+      },
+      {
+        id: 'helper',
+        name: 'Helper',
+        color: 'helper',
+        permissions: ['view_admin'],
+        system: false
+      }
+    ];
+    await saveData('roles', defaultRoles);
+  }
+
+  // Inizializza prodotti se non esistono
+  const products = await loadData('products', []);
+  if (products.length === 0) {
+    const defaultProducts = [
+      {
+        id: 1,
+        name: "VIP Bronze",
+        price: 4.99,
+        features: ["Prefix dedicato", "Kit giornaliero", "Queue prioritaria"],
+        featured: false
+      },
+      {
+        id: 2,
+        name: "VIP Silver",
+        price: 9.99,
+        features: ["Tutto di Bronze", "Particles esclusive", "/hat e /nick"],
+        featured: false
+      },
+      {
+        id: 3,
+        name: "VIP Gold",
+        price: 14.99,
+        features: ["Tutto di Silver", "Kit potenziato Lifesteal", "Slot riservato"],
+        featured: true
+      },
+      {
+        id: 4,
+        name: "VIP Legend",
+        price: 24.99,
+        features: ["Tutto di Gold", "Emote custom", "Ricompense evento +"],
+        featured: false
+      }
+    ];
+    await saveData('products', defaultProducts);
+  }
+
+  // Inizializza post di esempio se non esistono
+  const posts = await loadData('posts', []);
+  if (posts.length === 0) {
+    const defaultPosts = [
+      {
+        id: 1,
+        title: "[Guida] Come proteggere i cuori nella Lifesteal",
+        content: "Condividiamo strategie per non perdere cuori: teamplay, kit smart e ritirata strategica.",
+        author: "TheMarck_MC",
+        date: "2025-01-10",
+        replies: []
+      },
+      {
+        id: 2,
+        title: "Proposte eventi del weekend",
+        content: "Mini-tornei, caccia al tesoro, e drop party: dite la vostra!",
+        author: "TheMarck_MC",
+        date: "2025-01-12",
+        replies: []
+      }
+    ];
+    await saveData('posts', defaultPosts);
+  }
+}
+
+async function loadAllData() {
+  // I dati vengono caricati dinamicamente quando servono
+}
+
+/* ========================================
+   ADMIN AUTHENTICATION
+   ======================================== */
+
+async function handleAdminLogin() {
+  const username = document.getElementById('adminUsername').value.trim();
+  const password = document.getElementById('adminPassword').value;
+
+  if (!username || !password) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  const adminUsers = await loadData('admin_users', []);
+  const admin = adminUsers.find(u => u.username === username && u.password === password);
+
+  if (admin) {
+    currentAdmin = { ...admin };
+    showAlert('Accesso admin effettuato!', 'success');
+    document.getElementById('adminLoginSection').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    await renderAdminContent();
+  } else {
+    showAlert('Credenziali admin errate!', 'error');
+  }
+}
+
+function logoutAdmin() {
+  currentAdmin = null;
+  document.getElementById('adminLoginSection').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminUsername').value = '';
+  document.getElementById('adminPassword').value = '';
+  showAlert('Logout admin effettuato!', 'success');
+}
+
+async function checkAdminPermission(permission) {
+  if (!currentAdmin) {
+    return false;
+  }
+  
+  const roles = await loadData('roles', []);
+  const adminRoles = roles.filter(r => currentAdmin.roles.includes(r.id));
+  
+  return adminRoles.some(role => role.permissions.includes(permission));
+}
+
+/* ========================================
+   AUTHENTICATION
+   ======================================== */
+
+function switchToRegister() {
+  isRegistering = !isRegistering;
+  const title = document.getElementById('loginTitle');
+  const hint = document.getElementById('loginHint');
+  const button = document.getElementById('loginBtn');
+  
+  if (isRegistering) {
+    title.textContent = '📝 Registrazione';
+    hint.innerHTML = 'Hai già un account? <a onclick="switchToRegister()">Accedi</a><br>oppure <a onclick="showPage(\'home\')">torna alla home</a>';
+    button.textContent = 'Registrati';
+    button.onclick = handleRegister;
+  } else {
+    title.textContent = '🔐 Login';
+    hint.innerHTML = 'Non hai un account? <a onclick="switchToRegister()">Registrati</a><br>oppure <a onclick="showPage(\'home\')">torna alla home</a>';
+    button.textContent = 'Accedi';
+    button.onclick = handleLogin;
+  }
+}
+
+async function handleRegister() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!username || !password) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  if (username.length < 3) {
+    showAlert('Username troppo corto (minimo 3 caratteri)!', 'error');
+    return;
+  }
+
+  if (password.length < 4) {
+    showAlert('Password troppo corta (minimo 4 caratteri)!', 'error');
+    return;
+  }
+
+  const users = await loadData('forum_users', []);
+  
+  // Controlla se l'username esiste già
+  if (users.find(u => u.username === username)) {
+    showAlert('Username già esistente!', 'error');
+    return;
+  }
+
+  const newUser = {
+    id: users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1,
+    username: username,
+    password: password,
+    created: new Date().toISOString().split('T')[0]
+  };
+
+  users.push(newUser);
+  await saveData('forum_users', users);
+  
+  showAlert('Registrazione completata! Ora puoi accedere.', 'success');
+  
+  // Torna al form di login
+  switchToRegister();
+  document.getElementById('loginUsername').value = username;
+  document.getElementById('loginPassword').value = '';
+}
+
+async function handleLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!username || !password) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  const users = await loadData('forum_users', []);
+  const user = users.find(u => u.username === username && u.password === password);
+
+  if (user) {
+    currentUser = { ...user };
+    showAlert('Login effettuato con successo!', 'success');
+    updateUserInfo();
+    showPage('home');
+    
+    // Mostra sezioni del forum per utenti loggati
+    document.getElementById('forumCreatePost').style.display = 'block';
+    document.getElementById('userPostsCard').style.display = 'block';
+    
+    // Pulisci i campi
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+  } else {
+    showAlert('Credenziali errate!', 'error');
+  }
+}
+
+function logout() {
+  currentUser = null;
+  updateUserInfo();
+  showPage('home');
+  showAlert('Logout effettuato con successo!', 'success');
+  
+  // Nascondi sezioni del forum
+  document.getElementById('forumCreatePost').style.display = 'none';
+  document.getElementById('userPostsCard').style.display = 'none';
+}
+
+function checkAuth() {
+  updateUserInfo();
+}
+
+async function updateUserInfo() {
+  const userInfo = document.getElementById('userInfo');
+  const rolesBtn = document.getElementById('rolesBtn');
+  
+  if (currentUser) {
+    const roles = await loadData('roles', []);
+    const userRoles = currentUser.roles ? roles.filter(r => currentUser.roles.includes(r.id)) : [];
+    const rolesHTML = userRoles.map(r => `<span class="role-badge role-${r.color}">${r.name}</span>`).join('');
+    
+    userInfo.innerHTML = `
+      <span>👤 ${currentUser.username}</span>
+      ${rolesHTML}
+      <button class="btn-logout" onclick="logout()">Esci</button>
+    `;
+    
+    // Mostra gestione ruoli solo se è owner
+    if (await hasPermission('manage_roles')) {
+      if (rolesBtn) rolesBtn.style.display = 'inline-block';
+    } else {
+      if (rolesBtn) rolesBtn.style.display = 'none';
     }
+  } else {
+    userInfo.innerHTML = '';
+    if (rolesBtn) rolesBtn.style.display = 'none';
+  }
+}
+
+async function hasPermission(permission) {
+  if (!currentUser || !currentUser.roles) return false;
+  
+  const roles = await loadData('roles', []);
+  const userRoles = roles.filter(r => currentUser.roles.includes(r.id));
+  
+  return userRoles.some(role => role.permissions.includes(permission));
+}
+
+async function requirePermission(permission) {
+  if (!currentUser) {
+    showAlert('Devi essere loggato!', 'error');
+    showPage('login');
+    return false;
+  }
+  
+  if (!await hasPermission(permission)) {
+    showAlert('Non hai i permessi per questa azione!', 'error');
+    return false;
+  }
+  
+  return true;
+}
+
+/* ========================================
+   PAGE NAVIGATION
+   ======================================== */
+
+async function showPage(pageName) {
+  // Controllo accesso forum (richiede login)
+  if (pageName === 'forum' && !currentUser) {
+    showAlert('Devi essere registrato per accedere al forum!', 'error');
+    showPage('login');
+    return;
+  }
+  
+  // Admin sempre accessibile, ma mostra login
+  if (pageName === 'admin') {
+    document.getElementById('adminLoginSection').style.display = currentAdmin ? 'none' : 'block';
+    document.getElementById('adminPanel').style.display = currentAdmin ? 'block' : 'none';
+  }
+  
+  // Controllo accesso ruoli
+  if (pageName === 'roles' && !await hasPermission('manage_roles')) {
+    showAlert('Accesso negato! Solo gli owner possono gestire i ruoli.', 'error');
+    return;
+  }
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  
+  const page = document.getElementById(pageName);
+  if (page) {
+    page.classList.add('active');
+  }
+  
+  const navBtn = document.querySelector(`[data-page="${pageName}"]`);
+  if (navBtn) {
+    navBtn.classList.add('active');
+  }
+  
+  if (pageName === 'forum') {
+    await renderPosts();
+    await renderAllPosts();
+  }
+  if (pageName === 'store') {
+    await renderStore();
+  }
+  if (pageName === 'admin' && currentAdmin) {
+    await renderAdminContent();
+  }
+  if (pageName === 'roles') {
+    await renderRolesManagement();
+  }
+}
+
+/* ========================================
+   ADMIN TABS
+   ======================================== */
+
+async function showAdminTab(tabName) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
+  
+  const tab = document.getElementById(tabName);
+  if (tab) {
+    tab.classList.add('active');
+  }
+  
+  const btn = document.querySelector(`[data-tab="${tabName}"]`);
+  if (btn) {
+    btn.classList.add('active');
+  }
+
+  await renderAdminContent();
+}
+
+async function renderAdminContent() {
+  await renderAdminPosts();
+  await renderStaffList();
+  await renderProductsList();
+  await renderUsersList();
+  await updateStats();
+  await populateRoleSelects();
+}
+
+/* ========================================
+   ALERT SYSTEM
+   ======================================== */
+
+function showAlert(message, type = 'success') {
+  const alert = document.getElementById('alert');
+  alert.textContent = message;
+  alert.className = `alert alert-${type} active`;
+  setTimeout(() => alert.classList.remove('active'), 4000);
+}
+
+/* ========================================
+   UTILITY FUNCTIONS
+   ======================================== */
+
+function copyIP() {
+  navigator.clipboard.writeText("play.luminosmc.it");
+  showAlert("IP copiato negli appunti!", 'success');
+}
+
+async function updateStats() {
+  const posts = await loadData('posts', []);
+  const users = await loadData('forum_users', []);
+  const adminUsers = await loadData('admin_users', []);
+  const staff = adminUsers.filter(u => u.roles && u.roles.length > 0);
+  const products = await loadData('products', []);
+  
+  const totalPostsEl = document.getElementById('totalPosts');
+  const totalUsersEl = document.getElementById('totalUsers');
+  const totalStaffEl = document.getElementById('totalStaff');
+  const totalProductsEl = document.getElementById('totalProducts');
+  
+  if (totalPostsEl) totalPostsEl.textContent = posts.length;
+  if (totalUsersEl) totalUsersEl.textContent = users.length;
+  if (totalStaffEl) totalStaffEl.textContent = staff.length;
+  if (totalProductsEl) totalProductsEl.textContent = products.length;
+}
+
+// Export dati per admin
+async function exportData() {
+  if (!currentAdmin) {
+    showAlert('Devi essere loggato come admin!', 'error');
+    return;
+  }
+
+  const data = {
+    posts: await loadData('posts', []),
+    forum_users: await loadData('forum_users', []),
+    admin_users: await loadData('admin_users', []),
+    products: await loadData('products', []),
+    roles: await loadData('roles', []),
+    exported_at: new Date().toISOString()
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `luminosmc_backup_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showAlert('Dati esportati con successo!', 'success');
+}
+
+/* ========================================
+   POSTS MANAGEMENT
+   ======================================== */
+
+async function createPost() {
+  if (!currentUser) {
+    showAlert('Devi essere loggato per creare un post!', 'error');
+    return;
+  }
+  
+  const title = document.getElementById('postTitle').value.trim();
+  const content = document.getElementById('postContent').value.trim();
+  
+  if (!title || !content) {
+    showAlert("Compila tutti i campi!", 'error');
+    return;
+  }
+
+  if (title.length < 5) {
+    showAlert("Il titolo deve essere di almeno 5 caratteri!", 'error');
+    return;
+  }
+
+  if (content.length < 10) {
+    showAlert("Il contenuto deve essere di almeno 10 caratteri!", 'error');
+    return;
+  }
+  
+  const posts = await loadData('posts', []);
+  
+  const newPost = {
+    id: posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1,
+    title: title,
+    content: content,
+    author: currentUser.username,
+    date: new Date().toISOString().split('T')[0],
+    replies: []
+  };
+  
+  posts.push(newPost);
+  await saveData('posts', posts);
+  
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postContent').value = '';
+  await renderPosts();
+  await renderAllPosts();
+  showAlert("Post pubblicato con successo!", 'success');
+}
+
+async function renderAllPosts() {
+  const allPostsList = document.getElementById('allPostsList');
+  
+  if (!allPostsList) return;
+  
+  const posts = await loadData('posts', []);
+  const searchQuery = document.getElementById('searchPosts')?.value.toLowerCase() || '';
+  
+  // Filtra i post in base alla ricerca
+  let filteredPosts = posts;
+  if (searchQuery) {
+    filteredPosts = posts.filter(post => 
+      post.title.toLowerCase().includes(searchQuery) ||
+      post.content.toLowerCase().includes(searchQuery) ||
+      post.author.toLowerCase().includes(searchQuery)
+    );
+  }
+  
+  if (filteredPosts.length === 0) {
+    allPostsList.innerHTML = '<p style="color: #8899aa;">Nessun post trovato.</p>';
+    return;
+  }
+  
+  // Mostra tutti i post ordinati per data (più recenti prima)
+  const sortedPosts = [...filteredPosts].sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  // Paginazione
+  const startIndex = (currentPage - 1) * postsPerPage;
+  const endIndex = startIndex + postsPerPage;
+  const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sortedPosts.length / postsPerPage);
+  
+  allPostsList.innerHTML = paginatedPosts.map(post => `
+    <div class="post">
+      <h4>${escapeHtml(post.title)}</h4>
+      <p>${escapeHtml(post.content)}</p>
+      <div class="post-meta">Autore: ${escapeHtml(post.author)} | Data: ${post.date} | Risposte: ${post.replies.length}</div>
+      ${post.replies.length > 0 ? `
+        <div class="post-replies">
+          <strong>Risposte (${post.replies.length}):</strong>
+          ${post.replies.map(reply => `
+            <div class="reply">
+              <p>${escapeHtml(reply.content)}</p>
+              <div class="reply-meta">Da: ${escapeHtml(reply.author)} | ${reply.date}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${currentUser ? `
+        <div class="post-actions">
+          <button class="btn btn-success" onclick="replyToPostUser(${post.id})">💬 Rispondi</button>
+          ${post.author === currentUser.username ? `
+            <button class="btn btn-warning" onclick="editUserPost(${post.id})">✏️ Modifica</button>
+            <button class="btn btn-danger" onclick="deleteUserPost(${post.id})">🗑️ Elimina</button>
+          ` : ''}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+
+  // Aggiungi paginazione
+  if (totalPages > 1) {
+    const pagination = `
+      <div class="pagination">
+        ${currentPage > 1 ? `<button class="btn btn-primary" onclick="changePage(${currentPage - 1})">« Precedente</button>` : ''}
+        <span style="margin: 0 15px; color: #00f0ff;">Pagina ${currentPage} di ${totalPages}</span>
+        ${currentPage < totalPages ? `<button class="btn btn-primary" onclick="changePage(${currentPage + 1})">Successiva »</button>` : ''}
+      </div>
+    `;
+    allPostsList.innerHTML += pagination;
+  }
+}
+
+function changePage(page) {
+  currentPage = page;
+  renderAllPosts();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+async function renderPosts() {
+  const userPostsList = document.getElementById('userPostsList');
+  
+  if (!userPostsList || !currentUser) return;
+  
+  const posts = await loadData('posts', []);
+  const userPosts = posts.filter(p => p.author === currentUser.username);
+  
+  if (userPosts.length === 0) {
+    userPostsList.innerHTML = '<p style="color: #8899aa;">Non hai ancora pubblicato nessun post.</p>';
+    return;
+  }
+  
+  userPostsList.innerHTML = userPosts.map(post => `
+    <div class="post">
+      <h4>${escapeHtml(post.title)}</h4>
+      <p>${escapeHtml(post.content)}</p>
+      <div class="post-meta">Data: ${post.date} | Risposte: ${post.replies.length}</div>
+      ${post.replies.length > 0 ? `
+        <div class="post-replies">
+          <strong>Risposte (${post.replies.length}):</strong>
+          ${post.replies.map(reply => `
+            <div class="reply">
+              <p>${escapeHtml(reply.content)}</p>
+              <div class="reply-meta">Da: ${escapeHtml(reply.author)} | ${reply.date}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      <div class="post-actions">
+        <button class="btn btn-warning" onclick="editUserPost(${post.id})">✏️ Modifica</button>
+        <button class="btn btn-danger" onclick="deleteUserPost(${post.id})">🗑️ Elimina</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function editUserPost(id) {
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === id);
+  
+  if (!post || post.author !== currentUser?.username) {
+    if (!await hasPermission('edit_any_post')) {
+      showAlert("Non puoi modificare questo post!", 'error');
+      return;
+    }
+  }
+  
+  editingId = id;
+  document.getElementById('editPostTitle').value = post.title;
+  document.getElementById('editPostContent').value = post.content;
+  openModal('editPostModal');
+}
+
+async function deleteUserPost(id) {
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === id);
+  
+  if (!post || post.author !== currentUser?.username) {
+    if (!await hasPermission('delete_any_post')) {
+      showAlert("Non puoi eliminare questo post!", 'error');
+      return;
+    }
+  }
+  
+  if (confirm("Sei sicuro di voler eliminare questo post?")) {
+    const updatedPosts = posts.filter(p => p.id !== id);
+    await saveData('posts', updatedPosts);
+    await renderPosts();
+    await renderAllPosts();
+    await updateStats();
+    showAlert("Post eliminato con successo!", 'success');
+  }
+}
+
+async function replyToPostUser(id) {
+  if (!currentUser) {
+    showAlert('Devi essere loggato per rispondere!', 'error');
+    return;
+  }
+  
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  
+  editingId = id;
+  document.getElementById('replyPostPreview').innerHTML = `
+    <h4>${escapeHtml(post.title)}</h4>
+    <p>${escapeHtml(post.content)}</p>
+    <div class="reply-meta">Da: ${escapeHtml(post.author)} | ${post.date}</div>
+  `;
+  document.getElementById('replyContent').value = '';
+  openModal('replyPostModal');
+}
+
+/* ========================================
+   ADMIN POSTS MANAGEMENT
+   ======================================== */
+
+async function renderAdminPosts() {
+  const adminPostsList = document.getElementById('adminPostsList');
+  
+  if (!adminPostsList) return;
+  
+  const posts = await loadData('posts', []);
+  const searchQuery = document.getElementById('adminSearchPosts')?.value.toLowerCase() || '';
+  
+  // Filtra i post in base alla ricerca
+  let filteredPosts = posts;
+  if (searchQuery) {
+    filteredPosts = posts.filter(post => 
+      post.title.toLowerCase().includes(searchQuery) ||
+      post.content.toLowerCase().includes(searchQuery) ||
+      post.author.toLowerCase().includes(searchQuery)
+    );
+  }
+  
+  if (filteredPosts.length === 0) {
+    adminPostsList.innerHTML = '<p style="color: #8899aa;">Nessun post trovato.</p>';
+    return;
+  }
+  
+  const canEdit = await checkAdminPermission('edit_any_post');
+  const canDelete = await checkAdminPermission('delete_any_post');
+  
+  adminPostsList.innerHTML = filteredPosts.map(post => `
+    <div class="post">
+      <h4>${escapeHtml(post.title)}</h4>
+      <p>${escapeHtml(post.content)}</p>
+      <div class="post-meta">Autore: ${escapeHtml(post.author)} | Data: ${post.date} | Risposte: ${post.replies.length}</div>
+      ${post.replies.length > 0 ? `
+        <div class="post-replies">
+          <strong>Risposte (${post.replies.length}):</strong>
+          ${post.replies.map(reply => `
+            <div class="reply">
+              <p>${escapeHtml(reply.content)}</p>
+              <div class="reply-meta">Da: ${escapeHtml(reply.author)} | ${reply.date}</div>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+      <div class="post-actions">
+        <button class="btn btn-success" onclick="replyToPost(${post.id})">💬 Rispondi</button>
+        ${canEdit ? `<button class="btn btn-warning" onclick="editAdminPost(${post.id})">✏️ Modifica</button>` : ''}
+        ${canDelete ? `<button class="btn btn-danger" onclick="deleteAdminPost(${post.id})">🗑️ Elimina</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function editAdminPost(id) {
+  if (!await checkAdminPermission('edit_any_post')) {
+    showAlert('Non hai i permessi per modificare i post!', 'error');
+    return;
+  }
+  
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  
+  editingId = id;
+  document.getElementById('editPostTitle').value = post.title;
+  document.getElementById('editPostContent').value = post.content;
+  openModal('editPostModal');
+}
+
+async function deleteAdminPost(id) {
+  if (!await checkAdminPermission('delete_any_post')) {
+    showAlert('Non hai i permessi per eliminare i post!', 'error');
+    return;
+  }
+  
+  if (confirm("Sei sicuro di voler eliminare questo post?")) {
+    const posts = await loadData('posts', []);
+    const updatedPosts = posts.filter(p => p.id !== id);
+    await saveData('posts', updatedPosts);
+    await renderAdminPosts();
+    await updateStats();
+    showAlert("Post eliminato con successo!", 'success');
+  }
+}
+
+async function saveEditPost() {
+  const title = document.getElementById('editPostTitle').value.trim();
+  const content = document.getElementById('editPostContent').value.trim();
+  
+  if (!title || !content) {
+    showAlert("Compila tutti i campi!", 'error');
+    return;
+  }
+  
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === editingId);
+  
+  if (post) {
+    post.title = title;
+    post.content = content;
+    await saveData('posts', posts);
+    await renderPosts();
+    await renderAllPosts();
+    await renderAdminPosts();
+    closeModal('editPostModal');
+    showAlert("Post modificato con successo!", 'success');
+  }
+}
+
+async function replyToPost(id) {
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === id);
+  if (!post) return;
+  
+  editingId = id;
+  document.getElementById('replyPostPreview').innerHTML = `
+    <h4>${escapeHtml(post.title)}</h4>
+    <p>${escapeHtml(post.content)}</p>
+    <div class="reply-meta">Da: ${escapeHtml(post.author)} | ${post.date}</div>
+  `;
+  document.getElementById('replyContent').value = '';
+  openModal('replyPostModal');
+}
+
+async function saveReply() {
+  const content = document.getElementById('replyContent').value.trim();
+  
+  if (!content) {
+    showAlert("Scrivi una risposta!", 'error');
+    return;
+  }
+
+  if (content.length < 3) {
+    showAlert("La risposta deve essere di almeno 3 caratteri!", 'error');
+    return;
+  }
+  
+  const posts = await loadData('posts', []);
+  const post = posts.find(p => p.id === editingId);
+  
+  if (post) {
+    const author = currentUser ? currentUser.username : (currentAdmin ? currentAdmin.username : 'Admin');
+    const reply = {
+      content: content,
+      author: author,
+      date: new Date().toISOString().split('T')[0]
+    };
+    post.replies.push(reply);
+    await saveData('posts', posts);
+    await renderPosts();
+    await renderAllPosts();
+    await renderAdminPosts();
+    closeModal('replyPostModal');
+    showAlert("Risposta inviata con successo!", 'success');
+  }
+}
+
+/* ========================================
+   USERS DATABASE MANAGEMENT
+   ======================================== */
+
+async function renderUsersList() {
+  const usersList = document.getElementById('usersList');
+  
+  if (!usersList) return;
+  
+  const users = await loadData('forum_users', []);
+  const searchQuery = document.getElementById('adminSearchUsers')?.value.toLowerCase() || '';
+  
+  // Filtra utenti in base alla ricerca
+  let filteredUsers = users;
+  if (searchQuery) {
+    filteredUsers = users.filter(user => 
+      user.username.toLowerCase().includes(searchQuery) ||
+      user.id.toString().includes(searchQuery)
+    );
+  }
+  
+  if (filteredUsers.length === 0) {
+    usersList.innerHTML = '<p style="color: #8899aa;">Nessun utente trovato.</p>';
+    return;
+  }
+  
+  usersList.innerHTML = filteredUsers.map(user => `
+    <div class="list-item">
+      <h4>${escapeHtml(user.username)}</h4>
+      <div class="list-item-meta">ID: ${user.id}</div>
+      <div class="list-item-meta">Registrato il: ${user.created}</div>
+      <div class="list-item-actions">
+        <button class="btn btn-danger" onclick="deleteForumUser(${user.id})">🗑️ Elimina</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteForumUser(id) {
+  if (!currentAdmin) {
+    showAlert('Devi essere loggato come admin!', 'error');
+    return;
+  }
+  
+  if (!await checkAdminPermission('manage_users')) {
+    showAlert('Non hai i permessi per gestire gli utenti!', 'error');
+    return;
+  }
+  
+  if (confirm('Sei sicuro di voler eliminare questo utente? Tutti i suoi post verranno mantenuti.')) {
+    const users = await loadData('forum_users', []);
+    const updatedUsers = users.filter(u => u.id !== id);
+    await saveData('forum_users', updatedUsers);
+    await renderUsersList();
+    await updateStats();
+    showAlert('Utente eliminato con successo!', 'success');
+  }
+}
+
+/* ========================================
+   STAFF MANAGEMENT - FIXED VERSION
+   ======================================== */
+
+async function populateRoleSelects() {
+  const roles = await loadData('roles', []);
+  const staffRoleSelect = document.getElementById('staffRole');
+  const editStaffRoleSelect = document.getElementById('editStaffRole');
+  
+  if (staffRoleSelect) {
+    staffRoleSelect.innerHTML = roles.map(r => 
+      `<option value="${r.id}">${r.name}</option>`
+    ).join('');
+  }
+  
+  if (editStaffRoleSelect) {
+    editStaffRoleSelect.innerHTML = roles.map(r => 
+      `<option value="${r.id}">${r.name}</option>`
+    ).join('');
+  }
+}
+
+async function renderStaffList() {
+  const staffList = document.getElementById('staffList');
+  
+  if (!staffList) return;
+  
+  const adminUsers = await loadData('admin_users', []);
+  const roles = await loadData('roles', []);
+  const staff = adminUsers.filter(u => u.roles && u.roles.length > 0);
+  const searchQuery = document.getElementById('adminSearchStaff')?.value.toLowerCase() || '';
+  
+  // Filtra staff in base alla ricerca
+  let filteredStaff = staff;
+  if (searchQuery) {
+    filteredStaff = staff.filter(member => 
+      member.username.toLowerCase().includes(searchQuery)
+    );
+  }
+  
+  if (filteredStaff.length === 0) {
+    staffList.innerHTML = '<p style="color: #8899aa;">Nessuno staff trovato.</p>';
+    return;
+  }
+  
+  staffList.innerHTML = filteredStaff.map(member => {
+    const memberRoles = roles.filter(r => member.roles.includes(r.id));
+    const rolesHTML = memberRoles.map(r => 
+      `<span class="role-badge role-${r.color}">${r.name}</span>`
+    ).join('');
+    
+    return `
+      <div class="list-item">
+        <h4>${escapeHtml(member.username)}</h4>
+        <div class="list-item-meta">Ruoli: ${rolesHTML}</div>
+        <div class="list-item-meta">Aggiunto il: ${member.created}</div>
+        <div class="list-item-actions">
+          <button class="btn btn-warning" onclick="editStaff(${member.id})">✏️ Modifica</button>
+          <button class="btn btn-danger" onclick="deleteStaff(${member.id})">🗑️ Rimuovi</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function addStaff() {
+  if (!currentAdmin || !await checkAdminPermission('manage_staff')) {
+    showAlert('Non hai i permessi per aggiungere staff!', 'error');
+    return;
+  }
+
+  const username = document.getElementById('staffUsername').value.trim();
+  const password = document.getElementById('staffPassword').value;
+  const roleId = document.getElementById('staffRole').value;
+  
+  if (!username || !password || !roleId) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  if (username.length < 3) {
+    showAlert('Username troppo corto (minimo 3 caratteri)!', 'error');
+    return;
+  }
+
+  if (password.length < 4) {
+    showAlert('Password troppo corta (minimo 4 caratteri)!', 'error');
+    return;
+  }
+  
+  const adminUsers = await loadData('admin_users', []);
+  
+  // Controlla se l'username esiste già
+  if (adminUsers.find(u => u.username === username)) {
+    showAlert('Username già esistente!', 'error');
+    return;
+  }
+  
+  const newStaff = {
+    id: adminUsers.length > 0 ? Math.max(...adminUsers.map(u => u.id)) + 1 : 1,
+    username: username,
+    password: password,
+    roles: [roleId],
+    created: new Date().toISOString().split('T')[0]
+  };
+  
+  adminUsers.push(newStaff);
+  await saveData('admin_users', adminUsers);
+  
+  document.getElementById('staffUsername').value = '';
+  document.getElementById('staffPassword').value = '';
+  
+  await renderStaffList();
+  await updateStats();
+  showAlert("Staff aggiunto con successo!", 'success');
+}
+
+async function editStaff(id) {
+  if (!currentAdmin || !await checkAdminPermission('manage_staff')) {
+    showAlert('Non hai i permessi per modificare lo staff!', 'error');
+    return;
+  }
+  
+  const adminUsers = await loadData('admin_users', []);
+  const staff = adminUsers.find(u => u.id === id);
+  if (!staff) return;
+  
+  editingId = id;
+  document.getElementById('editStaffUsername').value = staff.username;
+  document.getElementById('editStaffPassword').value = '';
+  document.getElementById('editStaffRole').value = staff.roles[0] || '';
+  openModal('editStaffModal');
+}
+
+async function saveEditStaff() {
+  if (!currentAdmin || !await checkAdminPermission('manage_staff')) {
+    showAlert('Non hai i permessi per modificare lo staff!', 'error');
+    return;
+  }
+  
+  const username = document.getElementById('editStaffUsername').value.trim();
+  const password = document.getElementById('editStaffPassword').value;
+  const roleId = document.getElementById('editStaffRole').value;
+  
+  if (!username || !roleId) {
+    showAlert("Compila tutti i campi obbligatori!", 'error');
+    return;
+  }
+  
+  const adminUsers = await loadData('admin_users', []);
+  const staff = adminUsers.find(u => u.id === editingId);
+  
+  if (staff) {
+    staff.username = username;
+    if (password) {
+      staff.password = password;
+    }
+    staff.roles = [roleId];
+    
+    await saveData('admin_users', adminUsers);
+    await renderStaffList();
+    closeModal('editStaffModal');
+    showAlert("Staff modificato con successo!", 'success');
+  }
+}
+
+async function deleteStaff(id) {
+  if (!currentAdmin || !await checkAdminPermission('manage_staff')) {
+    showAlert('Non hai i permessi per eliminare lo staff!', 'error');
+    return;
+  }
+  
+  const adminUsers = await loadData('admin_users', []);
+  const staff = adminUsers.find(u => u.id === id);
+  
+  // Non permettere di eliminare l'owner principale
+  if (staff && staff.roles.includes('owner') && staff.username === 'TheMarck_MC') {
+    showAlert("Non puoi eliminare l'owner principale!", 'error');
+    return;
+  }
+  
+  if (confirm("Sei sicuro di voler rimuovere questo membro dello staff?")) {
+    const updatedUsers = adminUsers.filter(u => u.id !== id);
+    await saveData('admin_users', updatedUsers);
+    await renderStaffList();
+    await updateStats();
+    showAlert("Staff rimosso con successo!", 'success');
+  }
+}
+
+/* ========================================
+   PRODUCTS MANAGEMENT
+   ======================================== */
+
+async function renderStore() {
+  const storeGrid = document.getElementById('storeGrid');
+  
+  if (!storeGrid) return;
+  
+  const products = await loadData('products', []);
+  
+  storeGrid.innerHTML = products.map(product => `
+    <div class="store-card ${product.featured ? 'featured' : ''}">
+      ${product.featured ? '<div class="badge">Consigliato</div>' : ''}
+      <h4>${escapeHtml(product.name)}</h4>
+      <ul>
+        ${product.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+      </ul>
+      <div class="price">€${product.price.toFixed(2)}</div>
+      <button class="btn btn-primary">🛒 Acquista</button>
+    </div>
+  `).join('');
+}
+
+async function renderProductsList() {
+  const productsList = document.getElementById('productsList');
+  
+  if (!productsList) return;
+  
+  const products = await loadData('products', []);
+  const searchQuery = document.getElementById('adminSearchProducts')?.value.toLowerCase() || '';
+  
+  // Filtra prodotti in base alla ricerca
+  let filteredProducts = products;
+  if (searchQuery) {
+    filteredProducts = products.filter(product => 
+      product.name.toLowerCase().includes(searchQuery)
+    );
+  }
+  
+  if (filteredProducts.length === 0) {
+    productsList.innerHTML = '<p style="color: #8899aa;">Nessun prodotto trovato.</p>';
+    return;
+  }
+  
+  const canManageProducts = await checkAdminPermission('manage_products');
+  
+  productsList.innerHTML = filteredProducts.map(product => `
+    <div class="list-item">
+      <h4>${escapeHtml(product.name)} ${product.featured ? '⭐' : ''}</h4>
+      <div class="list-item-meta">Prezzo: €${product.price.toFixed(2)}</div>
+      <div class="list-item-meta">Features:</div>
+      <ul style="margin-left: 20px; margin-top: 5px;">
+        ${product.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+      </ul>
+      ${canManageProducts ? `
+        <div class="list-item-actions">
+          <button class="btn btn-warning" onclick="editProduct(${product.id})">✏️ Modifica</button>
+          <button class="btn btn-danger" onclick="deleteProduct(${product.id})">🗑️ Elimina</button>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+async function addProduct() {
+  if (!await checkAdminPermission('manage_products')) {
+    showAlert('Non hai i permessi per aggiungere prodotti!', 'error');
+    return;
+  }
+  
+  const name = document.getElementById('productName').value.trim();
+  const price = parseFloat(document.getElementById('productPrice').value);
+  const featuresText = document.getElementById('productFeatures').value.trim();
+  const featured = document.getElementById('productFeatured').checked;
+  
+  if (!name || !price || !featuresText) {
+    showAlert("Compila tutti i campi!", 'error');
+    return;
+  }
+
+  if (price <= 0) {
+    showAlert("Il prezzo deve essere maggiore di 0!", 'error');
+    return;
+  }
+  
+  const features = featuresText.split('\n').filter(f => f.trim());
+
+  if (features.length === 0) {
+    showAlert("Inserisci almeno una feature!", 'error');
+    return;
+  }
+
+  const products = await loadData('products', []);
+  
+  const newProduct = {
+    id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
+    name: name,
+    price: price,
+    features: features,
+    featured: featured
+  };
+  
+  products.push(newProduct);
+  await saveData('products', products);
+  
+  document.getElementById('productName').value = '';
+  document.getElementById('productPrice').value = '';
+  document.getElementById('productFeatures').value = '';
+  document.getElementById('productFeatured').checked = false;
+  
+  await renderProductsList();
+  await renderStore();
+  await updateStats();
+  showAlert("Prodotto aggiunto con successo!", 'success');
+}
+
+async function editProduct(id) {
+  if (!await checkAdminPermission('manage_products')) {
+    showAlert('Non hai i permessi per modificare i prodotti!', 'error');
+    return;
+  }
+  
+  const products = await loadData('products', []);
+  const product = products.find(p => p.id === id);
+  if (!product) return;
+  
+  editingId = id;
+  document.getElementById('editProductName').value = product.name;
+  document.getElementById('editProductPrice').value = product.price;
+  document.getElementById('editProductFeatures').value = product.features.join('\n');
+  document.getElementById('editProductFeatured').checked = product.featured;
+  openModal('editProductModal');
+}
+
+async function saveEditProduct() {
+  if (!await checkAdminPermission('manage_products')) {
+    showAlert('Non hai i permessi per modificare i prodotti!', 'error');
+    return;
+  }
+  
+  const name = document.getElementById('editProductName').value.trim();
+  const price = parseFloat(document.getElementById('editProductPrice').value);
+  const featuresText = document.getElementById('editProductFeatures').value.trim();
+  const featured = document.getElementById('editProductFeatured').checked;
+  
+  if (!name || !price || !featuresText) {
+    showAlert("Compila tutti i campi!", 'error');
+    return;
+  }
+  
+  const features = featuresText.split('\n').filter(f => f.trim());
+  const products = await loadData('products', []);
+  const product = products.find(p => p.id === editingId);
+  
+  if (product) {
+    product.name = name;
+    product.price = price;
+    product.features = features;
+    product.featured = featured;
+    
+    await saveData('products', products);
+    await renderProductsList();
+    await renderStore();
+    closeModal('editProductModal');
+    showAlert("Prodotto modificato con successo!", 'success');
+  }
+}
+
+async function deleteProduct(id) {
+  if (!await checkAdminPermission('manage_products')) {
+    showAlert('Non hai i permessi per eliminare i prodotti!', 'error');
+    return;
+  }
+  
+  if (confirm("Sei sicuro di voler eliminare questo prodotto?")) {
+    const products = await loadData('products', []);
+    const updatedProducts = products.filter(p => p.id !== id);
+    await saveData('products', updatedProducts);
+    await renderProductsList();
+    await renderStore();
+    await updateStats();
+    showAlert("Prodotto eliminato con successo!", 'success');
+  }
+}
+
+/* ========================================
+   ROLES MANAGEMENT
+   ======================================== */
+
+async function renderRolesManagement() {
+  await renderPermissionsCheckboxes('permissionsCheckboxes');
+  await renderRolesList();
+}
+
+async function renderPermissionsCheckboxes(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  container.innerHTML = AVAILABLE_PERMISSIONS.map(perm => `
+    <div style="margin: 10px 0;">
+      <label>
+        <input type="checkbox" value="${perm.id}" class="permission-checkbox">
+        ${perm.label}
+      </label>
+    </div>
+  `).join('');
+}
+
+async function createRole() {
+  if (!await hasPermission('manage_roles')) {
+    showAlert('Non hai i permessi per creare ruoli!', 'error');
+    return;
+  }
+  
+  const name = document.getElementById('roleName').value.trim();
+  const color = document.getElementById('roleColor').value;
+  const checkboxes = document.querySelectorAll('#permissionsCheckboxes .permission-checkbox');
+  const permissions = Array.from(checkboxes)
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+  
+  if (!name) {
+    showAlert('Inserisci un nome per il ruolo!', 'error');
+    return;
+  }
+
+  if (name.length < 3) {
+    showAlert('Il nome del ruolo deve essere di almeno 3 caratteri!', 'error');
+    return;
+  }
+  
+  const roles = await loadData('roles', []);
+  
+  // Genera ID univoco dal nome
+  const roleId = name.toLowerCase().replace(/\s+/g, '_');
+  
+  if (roles.find(r => r.id === roleId)) {
+    showAlert('Esiste già un ruolo con questo nome!', 'error');
+    return;
+  }
+  
+  const newRole = {
+    id: roleId,
+    name: name,
+    color: color,
+    permissions: permissions,
+    system: false
+  };
+  
+  roles.push(newRole);
+  await saveData('roles', roles);
+  
+  document.getElementById('roleName').value = '';
+  document.querySelectorAll('#permissionsCheckboxes .permission-checkbox').forEach(cb => cb.checked = false);
+  
+  await renderRolesList();
+  await populateRoleSelects();
+  showAlert('Ruolo creato con successo!', 'success');
+}
+
+async function renderRolesList() {
+  const rolesList = document.getElementById('rolesList');
+  if (!rolesList) return;
+  
+  const roles = await loadData('roles', []);
+  
+  rolesList.innerHTML = roles.map(role => {
+    const permissionsLabels = role.permissions.map(permId => {
+      const perm = AVAILABLE_PERMISSIONS.find(p => p.id === permId);
+      return perm ? perm.label : permId;
+    }).join(', ');
+    
+    return `
+      <div class="list-item">
+        <h4>
+          <span class="role-badge role-${role.color}">${role.name}</span>
+          ${role.system ? '<span style="color: #8899aa; font-size: 0.8em;">(Sistema)</span>' : ''}
+        </h4>
+        <div class="list-item-meta">Permessi: ${permissionsLabels || 'Nessuno'}</div>
+        ${!role.system ? `
+          <div class="list-item-actions">
+            <button class="btn btn-warning" onclick="editRole('${role.id}')">✏️ Modifica</button>
+            <button class="btn btn-danger" onclick="deleteRole('${role.id}')">🗑️ Elimina</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+async function editRole(roleId) {
+  if (!await hasPermission('manage_roles')) {
+    showAlert('Non hai i permessi per modificare i ruoli!', 'error');
+    return;
+  }
+  
+  const roles = await loadData('roles', []);
+  const role = roles.find(r => r.id === roleId);
+  if (!role || role.system) return;
+  
+  editingId = roleId;
+  document.getElementById('editRoleName').value = role.name;
+  document.getElementById('editRoleColor').value = role.color;
+  
+  await renderPermissionsCheckboxes('editPermissionsCheckboxes');
+  
+  // Seleziona i permessi del ruolo
+  role.permissions.forEach(permId => {
+    const checkbox = document.querySelector(`#editPermissionsCheckboxes input[value="${permId}"]`);
+    if (checkbox) checkbox.checked = true;
+  });
+  
+  openModal('editRoleModal');
+}
+
+async function saveEditRole() {
+  if (!await hasPermission('manage_roles')) {
+    showAlert('Non hai i permessi per modificare i ruoli!', 'error');
+    return;
+  }
+  
+  const name = document.getElementById('editRoleName').value.trim();
+  const color = document.getElementById('editRoleColor').value;
+  const checkboxes = document.querySelectorAll('#editPermissionsCheckboxes .permission-checkbox');
+  const permissions = Array.from(checkboxes)
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+  
+  if (!name) {
+    showAlert('Inserisci un nome per il ruolo!', 'error');
+    return;
+  }
+  
+  const roles = await loadData('roles', []);
+  const role = roles.find(r => r.id === editingId);
+  
+  if (role && !role.system) {
+    role.name = name;
+    role.color = color;
+    role.permissions = permissions;
+    
+    await saveData('roles', roles);
+    await renderRolesList();
+    await populateRoleSelects();
+    closeModal('editRoleModal');
+    showAlert('Ruolo modificato con successo!', 'success');
+  }
+}
+
+async function deleteRole(roleId) {
+  if (!await hasPermission('manage_roles')) {
+    showAlert('Non hai i permessi per eliminare i ruoli!', 'error');
+    return;
+  }
+  
+  const roles = await loadData('roles', []);
+  const role = roles.find(r => r.id === roleId);
+  
+  if (role && role.system) {
+    showAlert('Non puoi eliminare un ruolo di sistema!', 'error');
+    return;
+  }
+  
+  // Controlla se ci sono utenti con questo ruolo
+  const adminUsers = await loadData('admin_users', []);
+  const usersWithRole = adminUsers.filter(u => u.roles && u.roles.includes(roleId));
+  
+  if (usersWithRole.length > 0) {
+    showAlert(`Impossibile eliminare: ${usersWithRole.length} membri staff hanno questo ruolo!`, 'error');
+    return;
+  }
+  
+  if (confirm('Sei sicuro di voler eliminare questo ruolo?')) {
+    const updatedRoles = roles.filter(r => r.id !== roleId);
+    await saveData('roles', updatedRoles);
+    await renderRolesList();
+    await populateRoleSelects();
+    showAlert('Ruolo eliminato con successo!', 'success');
+  }
+}
+
+/* ========================================
+   MODAL MANAGEMENT
+   ======================================== */
+
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.add('active');
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  editingId = null;
+}
+
+// Close modal on outside click
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal(this.id);
+      }
+    });
+  });
 });
