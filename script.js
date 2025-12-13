@@ -20,13 +20,19 @@ const AVAILABLE_PERMISSIONS = [
 ];
 
 /* ========================================
-   PERSISTENT STORAGE FUNCTIONS (localStorage)
+   PERSISTENT STORAGE FUNCTIONS (SHARED)
    ======================================== */
 
 async function saveData(key, data, shared = true) {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
-    return true;
+    // Usa window.storage se disponibile, altrimenti localStorage
+    if (window.storage && shared) {
+      const result = await window.storage.set(key, JSON.stringify(data), true);
+      return result !== null;
+    } else {
+      localStorage.setItem(key, JSON.stringify(data));
+      return true;
+    }
   } catch (error) {
     console.error('Errore nel salvare i dati:', error);
     return false;
@@ -35,8 +41,14 @@ async function saveData(key, data, shared = true) {
 
 async function loadData(key, defaultValue = null, shared = true) {
   try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : defaultValue;
+    // Usa window.storage se disponibile, altrimenti localStorage
+    if (window.storage && shared) {
+      const result = await window.storage.get(key, true);
+      return result ? JSON.parse(result.value) : defaultValue;
+    } else {
+      const value = localStorage.getItem(key);
+      return value ? JSON.parse(value) : defaultValue;
+    }
   } catch (error) {
     console.error('Errore nel caricare i dati:', error);
     return defaultValue;
@@ -45,8 +57,14 @@ async function loadData(key, defaultValue = null, shared = true) {
 
 async function deleteData(key, shared = true) {
   try {
-    localStorage.removeItem(key);
-    return true;
+    // Usa window.storage se disponibile, altrimenti localStorage
+    if (window.storage && shared) {
+      const result = await window.storage.delete(key, true);
+      return result !== null;
+    } else {
+      localStorage.removeItem(key);
+      return true;
+    }
   } catch (error) {
     console.error('Errore nell\'eliminare i dati:', error);
     return false;
@@ -55,7 +73,12 @@ async function deleteData(key, shared = true) {
 
 async function saveSession(user) {
   try {
-    localStorage.setItem('current_session', JSON.stringify(user));
+    // Sessione sempre locale (non condivisa)
+    if (window.storage) {
+      await window.storage.set('current_session', JSON.stringify(user), false);
+    } else {
+      localStorage.setItem('current_session', JSON.stringify(user));
+    }
   } catch (error) {
     console.error('Errore nel salvare la sessione:', error);
   }
@@ -63,8 +86,14 @@ async function saveSession(user) {
 
 async function loadSession() {
   try {
-    const value = localStorage.getItem('current_session');
-    return value ? JSON.parse(value) : null;
+    // Sessione sempre locale (non condivisa)
+    if (window.storage) {
+      const result = await window.storage.get('current_session', false);
+      return result ? JSON.parse(result.value) : null;
+    } else {
+      const value = localStorage.getItem('current_session');
+      return value ? JSON.parse(value) : null;
+    }
   } catch (error) {
     console.error('Errore nel caricare la sessione:', error);
     return null;
@@ -73,7 +102,12 @@ async function loadSession() {
 
 async function clearSession() {
   try {
-    localStorage.removeItem('current_session');
+    // Sessione sempre locale (non condivisa)
+    if (window.storage) {
+      await window.storage.delete('current_session', false);
+    } else {
+      localStorage.removeItem('current_session');
+    }
   } catch (error) {
     console.error('Errore nell\'eliminare la sessione:', error);
   }
@@ -100,11 +134,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 async function initializeSystem() {
-  console.log('🔄 Inizializzazione sistema...');
-  
   // Inizializza owner solo se non esistono admin users
   const adminUsers = await loadData('admin_users', []);
-  console.log('📊 Admin users trovati:', adminUsers.length);
   
   if (adminUsers.length === 0) {
     // Crea un admin owner di default per il primo accesso
@@ -116,21 +147,12 @@ async function initializeSystem() {
       created: new Date().toISOString().split('T')[0]
     };
     
-    const success = await saveData('admin_users', [defaultOwner]);
-    console.log('✅ Account Owner creato:', success);
-    
-    // Verifica che sia stato salvato
-    const verify = await loadData('admin_users', []);
-    console.log('🔍 Verifica admin salvato:', verify);
-    
+    await saveData('admin_users', [defaultOwner]);
     showAlert('SETUP INIZIALE: Account Owner creato! Username: admin | Password: admin', 'success');
-  } else {
-    console.log('ℹ️ Admin users già presenti:', adminUsers);
   }
 
   // Inizializza ruoli se non esistono
   const roles = await loadData('roles', []);
-  console.log('📊 Ruoli trovati:', roles.length);
   
   if (roles.length === 0) {
     const defaultRoles = [
@@ -164,12 +186,10 @@ async function initializeSystem() {
       }
     ];
     await saveData('roles', defaultRoles);
-    console.log('✅ Ruoli creati');
   }
 
   // Inizializza prodotti se non esistono
   const products = await loadData('products', []);
-  console.log('📊 Prodotti trovati:', products.length);
   
   if (products.length === 0) {
     const defaultProducts = [
@@ -203,10 +223,7 @@ async function initializeSystem() {
       }
     ];
     await saveData('products', defaultProducts);
-    console.log('✅ Prodotti creati');
   }
-  
-  console.log('✅ Inizializzazione completata');
 }
 
 /* ========================================
@@ -264,24 +281,15 @@ async function handleAdminLogin() {
   const username = document.getElementById('adminUsername').value.trim();
   const password = document.getElementById('adminPassword').value;
 
-  console.log('🔐 Tentativo login admin:', username);
-
   if (!username || !password) {
     showAlert('Compila tutti i campi!', 'error');
     return;
   }
 
   const adminUsers = await loadData('admin_users', []);
-  console.log('👥 Admin users nel database:', adminUsers);
-  console.log('🔍 Cerco:', { username, password });
-  
-  const admin = adminUsers.find(u => {
-    console.log('Confronto con:', u.username, u.password);
-    return u.username === username && u.password === password;
-  });
+  const admin = adminUsers.find(u => u.username === username && u.password === password);
 
   if (admin) {
-    console.log('✅ Admin trovato:', admin);
     currentAdmin = { ...admin };
     await saveSession({ ...admin, isAdmin: true });
     showAlert('Accesso admin effettuato!', 'success');
@@ -289,8 +297,7 @@ async function handleAdminLogin() {
     document.getElementById('adminPanel').style.display = 'block';
     await renderAdminContent();
   } else {
-    console.log('❌ Admin non trovato');
-    showAlert(`Credenziali admin errate! (Database ha ${adminUsers.length} admin)`, 'error');
+    showAlert(`Credenziali admin errate!`, 'error');
   }
 }
 
@@ -657,8 +664,6 @@ async function resetAllData() {
 
 // Funzione per creare manualmente l'admin di default
 async function createDefaultAdmin() {
-  console.log('🔧 Creazione manuale admin...');
-  
   const defaultOwner = {
     id: 'admin_owner',
     username: 'admin',
@@ -668,23 +673,15 @@ async function createDefaultAdmin() {
   };
   
   const adminUsers = await loadData('admin_users', []);
-  console.log('📊 Admin attuali:', adminUsers);
   
   // Controlla se esiste già
   if (adminUsers.find(u => u.username === 'admin')) {
     showAlert('Account admin già esistente!', 'error');
-    console.log('⚠️ Admin già presente nel database');
     return;
   }
   
   adminUsers.push(defaultOwner);
-  const success = await saveData('admin_users', adminUsers);
-  console.log('💾 Salvataggio risultato:', success);
-  
-  // Verifica immediata
-  const verify = await loadData('admin_users', []);
-  console.log('🔍 Verifica dopo salvataggio:', verify);
-  
+  await saveData('admin_users', adminUsers);
   showAlert('Account admin creato! Username: admin | Password: admin', 'success');
 }
 
