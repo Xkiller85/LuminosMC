@@ -2,307 +2,140 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
+  <title>Luminos MC - Sistema Completo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LuminosMC - Server Lifesteal</title>
+  <!-- Collega il CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header -->
+  <!-- HEADER -->
   <header class="header">
     <div class="header-content">
-      <h1 class="logo" onclick="showPage('home')">⚡ LuminosMC</h1>
+      <div class="logo" onclick="showPage('home')">Luminos MC</div>
       <nav class="nav">
-        <button class="nav-btn active" onclick="showPage('home')" data-page="home">🏠 Home</button>
-        <button class="nav-btn" onclick="showPage('store')" data-page="store">🛒 Store</button>
-        <button class="nav-btn" onclick="showPage('forum')" data-page="forum">💬 Forum</button>
-        <button class="nav-btn" onclick="showPage('admin')" data-page="admin">⚡ Admin</button>
-        <div class="user-info" id="userInfo"></div>
+        <button class="nav-btn" data-page="home" onclick="showPage('home')">Home</button>
+        <button class="nav-btn" data-page="store" onclick="showPage('store')">Store</button>
+        <button class="nav-btn" data-page="forum" onclick="showPage('forum')">Forum</button>
+        <button class="nav-btn" data-page="login" onclick="showPage('login')">Login</button>
+        <button class="nav-btn" data-page="admin" onclick="showPage('admin')">Admin</button>
       </nav>
+      <div id="userInfo" class="user-info"></div>
     </div>
   </header>
 
-  <!-- Alert -->
-  <div class="container">
-    <div id="alert" class="alert alert-success"></div>
-  </div>
-
-  <!-- Login Page -->
-  <div id="login" class="page">
-    <div class="container">
-      <div class="login-container">
-        <div class="card login-card">
-          <h2 id="loginTitle">🔐 Login</h2>
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="loginUsername" placeholder="Inserisci username">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="Inserisci password">
-          </div>
-          <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Accedi</button>
-          <p class="hint">
-            <span id="loginHint">Non hai un account? <a onclick="switchToRegister()">Registrati</a><br>oppure <a onclick="showPage('home')">torna alla home</a></span>
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Home Page -->
-  <div id="home" class="page active">
-    <div class="container">
+  <main class="container">
+    <!-- HOME -->
+    <section id="home" class="page active">
       <div class="hero">
-        <h2>Benvenuto su LuminosMC</h2>
-        <p><strong>LuminosMC</strong> ospita la <strong>Lifesteal più pericolosa d'Italia</strong>.</p>
-        <p>Una modalità unica dove <strong>ogni vittoria ti regala un cuore ❤️</strong></p>
-        <p>e <strong>ogni sconfitta te ne strappa uno 💔</strong>.</p>
-        <p><em>Sopravvivi, combatti e diventa leggenda!</em></p>
-        <button class="btn btn-primary" onclick="copyIP()">📋 Copia IP del server</button>
+        <h2>Benvenuto su Luminos MC</h2>
+        <p>Server IP: <strong>play.luminosmc.it</strong></p>
       </div>
+    </section>
 
-      <div class="card">
-        <h3>Cosa troverai qui</h3>
-        <ul class="features-list">
-          <li><strong>Una Lifesteal pericolosa</strong> dove ogni cuore conta</li>
-          <li><strong>VIP esclusivi</strong> con vantaggi unici e stile da veri boss</li>
-          <li><strong>Una community stupenda</strong> pronta a combattere e collaborare</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- Store Page -->
-  <div id="store" class="page">
-    <div class="container">
-      <div class="hero">
-        <h2>Store ufficiale</h2>
-        <p>👑 Scegli il tuo <strong>VIP esclusivo</strong> e domina la Lifesteal.</p>
-      </div>
-
+    <!-- STORE -->
+    <section id="store" class="page">
+      <h2>Store</h2>
       <div id="storeGrid" class="store-grid"></div>
+    </section>
 
-      <div class="card">
-        <p style="text-align: center;">💡 I vantaggi sono cosmetici e di qualità di vita. Il gioco rimane <strong>fair</strong> per tutti.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Forum Page -->
-  <div id="forum" class="page">
-    <div class="container">
-      <div class="hero">
-        <h2>Forum della community</h2>
-        <p>💬 Condividi idee, reporta bug e proponi eventi Lifesteal.</p>
-      </div>
-
-      <div class="card" id="forumCreatePost" style="display:none">
+    <!-- FORUM -->
+    <section id="forum" class="page">
+      <h2>Forum</h2>
+      <div id="forumCreatePost" class="card" style="display:none;">
         <h3>Crea un nuovo post</h3>
         <div class="form-group">
-          <label>Nickname</label>
-          <input type="text" id="postNickname" placeholder="Il tuo nickname Minecraft">
+          <label for="postNickname">Nickname</label>
+          <input id="postNickname">
         </div>
         <div class="form-group">
-          <label>Titolo del forum</label>
-          <input type="text" id="postTitle" placeholder="Titolo del problema/proposta">
+          <label for="postTitle">Titolo</label>
+          <input id="postTitle">
         </div>
         <div class="form-group">
-          <label>Descrizione</label>
-          <textarea id="postDescription" placeholder="Descrivi il problema o la tua idea..."></textarea>
+          <label for="postDescription">Descrizione</label>
+          <textarea id="postDescription"></textarea>
         </div>
-        <button class="btn btn-primary" onclick="createPost()">➕ Pubblica</button>
+        <button class="btn btn-success" onclick="createPost()">Pubblica</button>
+      </div>
+
+      <div class="card">
+        <h3>I tuoi post</h3>
+        <div id="userPostsCard" style="display:none;">
+          <div id="userPostsList"></div>
+        </div>
       </div>
 
       <div class="card">
         <h3>Tutti i post</h3>
-        <div class="form-group">
-          <input type="text" id="searchPosts" placeholder="🔍 Cerca post..." oninput="renderAllPosts()">
-        </div>
-        <button class="btn btn-primary" onclick="renderAllPosts()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
+        <input id="searchPosts" placeholder="Cerca..." oninput="renderAllPosts()">
         <div id="allPostsList"></div>
       </div>
+    </section>
 
-      <div class="card" id="userPostsCard" style="display:none">
-        <h3>I miei forum</h3>
-        <div id="userPostsList"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Admin Page -->
-  <div id="admin" class="page">
-    <div class="container">
-      <!-- Admin Login -->
-      <div id="adminLoginSection" class="card" style="max-width: 500px; margin: 0 auto;">
-        <h3>🔐 Accesso Admin</h3>
-        <p style="color: #8899aa; margin-bottom: 20px;">Inserisci le credenziali admin</p>
+    <!-- LOGIN -->
+    <section id="login" class="page login-container">
+      <div class="login-card card">
+        <h2 id="loginTitle">🔐 Login</h2>
         <div class="form-group">
-          <label>Username</label>
-          <input type="text" id="adminUsername" placeholder="Username">
+          <label for="loginUsername">Username</label>
+          <input id="loginUsername">
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="adminPassword" placeholder="Password">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password">
+        </div>
+        <button id="loginBtn" class="btn btn-primary" onclick="handleLogin()">Accedi</button>
+        <p id="loginHint" class="hint">
+          Non hai un account? <a onclick="switchToRegister()">Registrati</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section id="admin" class="page">
+      <div id="adminLoginSection" class="card">
+        <h2>Login Admin</h2>
+        <div class="form-group">
+          <label for="adminUsername">Username</label>
+          <input id="adminUsername">
+        </div>
+        <div class="form-group">
+          <label for="adminPassword">Password</label>
+          <input id="adminPassword" type="password">
         </div>
         <button class="btn btn-primary" onclick="handleAdminLogin()">Accedi</button>
       </div>
 
-      <!-- Admin Panel -->
-      <div id="adminPanel" style="display:none">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h2 style="color: #00f0ff;">Pannello Admin</h2>
-          <button class="btn-logout" onclick="logoutAdmin()">Esci</button>
-        </div>
-
+      <div id="adminPanel" style="display:none;">
         <div class="admin-tabs">
-          <button class="tab-btn active" onclick="showAdminTab('forum')" data-tab="forum">💬 Forum</button>
-          <button class="tab-btn" onclick="showAdminTab('staff')" data-tab="staff">👥 Staff</button>
-          <button class="tab-btn" onclick="showAdminTab('store')" data-tab="store">🛒 Store</button>
-          <button class="tab-btn" onclick="showAdminTab('database')" data-tab="database">📊 Database</button>
-          <button class="tab-btn" onclick="showAdminTab('roles')" data-tab="roles">🎭 Ruoli</button>
+          <button class="tab-btn" data-tab="store" onclick="showAdminTab('store')">Store</button>
+          <button class="tab-btn" data-tab="database" onclick="showAdminTab('database')">Database</button>
+          <button class="tab-btn" data-tab="roles" onclick="showAdminTab('roles')">Ruoli</button>
         </div>
 
-        <!-- Forum Tab -->
-        <div id="admin-forum" class="admin-tab active">
-          <div class="card">
-            <h3>💬 Gestione Forum</h3>
-            <p style="color: #8899aa; margin-bottom: 20px;">Visualizza tutti i post degli utenti, rispondi ed elimina</p>
-            <div class="form-group">
-              <input type="text" id="adminSearchForum" placeholder="🔍 Cerca post..." oninput="renderAdminForum()">
-            </div>
-            <button class="btn btn-primary" onclick="renderAdminForum()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
-            <div id="adminForumList"></div>
-          </div>
+        <div id="admin-store" class="admin-tab active">
+          <h3>Gestione Store</h3>
+          <div id="adminStoreList"></div>
         </div>
 
-        <!-- Staff Tab -->
-        <div id="admin-staff" class="admin-tab">
-          <div class="card">
-            <h3>➕ Aggiungi Staff</h3>
-            <p style="color: #8899aa; margin-bottom: 20px;">Solo l'owner può aggiungere membri dello staff</p>
-            <div class="form-group">
-              <label>Username</label>
-              <input type="text" id="staffUsername" placeholder="Username">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" id="staffPassword" placeholder="Password">
-            </div>
-            <div class="form-group">
-              <label>Ruolo</label>
-              <select id="staffRole"></select>
-            </div>
-            <button class="btn btn-primary" onclick="addStaff()">Aggiungi Staff</button>
-          </div>
-
-          <div class="card">
-            <h3>👥 Lista Staff</h3>
-            <div class="form-group">
-              <input type="text" id="adminSearchStaff" placeholder="🔍 Cerca staff..." oninput="renderStaffList()">
-            </div>
-            <button class="btn btn-primary" onclick="renderStaffList()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
-            <div id="staffList"></div>
-          </div>
-        </div>
-
-        <!-- Store Tab -->
-        <div id="admin-store" class="admin-tab">
-          <div class="card">
-            <h3>➕ Aggiungi Prodotto</h3>
-            <p style="color: #8899aa; margin-bottom: 20px;">Solo l'owner può gestire lo store</p>
-            <div class="form-group">
-              <label>Nome Prodotto</label>
-              <input type="text" id="productName" placeholder="VIP Gold">
-            </div>
-            <div class="form-group">
-              <label>Prezzo (€)</label>
-              <input type="number" id="productPrice" placeholder="14.99" step="0.01">
-            </div>
-            <div class="form-group">
-              <label>Features (una per riga)</label>
-              <textarea id="productFeatures" placeholder="Kit potenziato&#10;Slot riservato&#10;Particles esclusive"></textarea>
-            </div>
-            <div class="form-group">
-              <label>
-                <input type="checkbox" id="productFeatured"> Prodotto in evidenza
-              </label>
-            </div>
-            <button class="btn btn-primary" onclick="addProduct()">Aggiungi Prodotto</button>
-          </div>
-
-          <div class="card">
-            <h3>🛒 Lista Prodotti</h3>
-            <div class="form-group">
-              <input type="text" id="adminSearchStore" placeholder="🔍 Cerca prodotti..." oninput="renderAdminStore()">
-            </div>
-            <button class="btn btn-primary" onclick="renderAdminStore()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
-            <div id="adminStoreList"></div>
-          </div>
-        </div>
-
-        <!-- Database Tab -->
         <div id="admin-database" class="admin-tab">
-          <div class="card">
-            <h3>📊 Database Utenti</h3>
-            <p style="color: #8899aa; margin-bottom: 20px;">Visualizza tutti gli utenti registrati con username, password e ruolo</p>
-            <div class="form-group">
-              <input type="text" id="adminSearchDatabase" placeholder="🔍 Cerca utenti..." oninput="renderDatabase()">
-            </div>
-            <button class="btn btn-primary" onclick="renderDatabase()" style="margin-bottom: 20px;">🔄 Aggiorna</button>
-            <div id="databaseList"></div>
-          </div>
+          <h3>Utenti</h3>
+          <div id="databaseList"></div>
         </div>
 
-        <!-- Roles Tab -->
         <div id="admin-roles" class="admin-tab">
-          <div class="card">
-            <h3>➕ Crea Nuovo Ruolo</h3>
-            <p style="color: #8899aa; margin-bottom: 20px;">Solo l'owner può gestire i ruoli</p>
-            <div class="form-group">
-              <label>Nome Ruolo</label>
-              <input type="text" id="roleName" placeholder="Es: Moderatore">
-            </div>
-            <div class="form-group">
-              <label>ID Ruolo</label>
-              <input type="text" id="roleId" placeholder="Es: moderator">
-            </div>
-            <div class="form-group">
-              <label>Permessi (separati da virgola)</label>
-              <input type="text" id="rolePermissions" placeholder="manage_forum, view_database">
-            </div>
-            <button class="btn btn-primary" onclick="addRole()">Crea Ruolo</button>
-          </div>
-
-          <div class="card">
-            <h3>🎭 Lista Ruoli</h3>
-            <div id="rolesList"></div>
-          </div>
+          <h3>Ruoli</h3>
+          <div id="rolesList"></div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
-  <!-- Modal Risposta -->
-  <div id="replyPostModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h3>Rispondi al Post</h3>
-        <button class="close-btn" onclick="closeModal('replyPostModal')">×</button>
-      </div>
-      <div class="post-preview" id="replyPostPreview"></div>
-      <div class="form-group">
-        <label>La tua risposta</label>
-        <textarea id="replyContent" placeholder="Scrivi la tua risposta..."></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="saveReply()">📤 Invia Risposta</button>
-    </div>
-  </div>
-
-  <!-- Footer -->
   <footer class="footer">
-    <p>&copy; 2025 LuminosMC - Tutti i diritti riservati</p>
+    <p>© 2025 Luminos MC - Tutti i diritti riservati</p>
   </footer>
 
-  <script src="script.js"></script>
+  <!-- SCRIPT -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>
