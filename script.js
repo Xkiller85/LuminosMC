@@ -14,14 +14,13 @@ import {
 
 /* CONFIG FIREBASE */
 const firebaseConfig = {
-  apiKey: "INSERISCI_API_KEY",
-  authDomain: "INSERISCI_PROJECT.firebaseapp.com",
-  databaseURL: "https://INSERISCI_PROJECT.firebaseio.com",
-  projectId: "INSERISCI_PROJECT",
-  storageBucket: "INSERISCI_PROJECT.appspot.com",
-  messagingSenderId: "INSERISCI_ID",
-  appId: "INSERISCI_APP_ID",
-  measurementId: "INSERISCI_MEASUREMENT_ID"
+  apiKey: "AIzaSyAp3juPC1YnzBbTWdK0qtGEdj8UcRwpjUA",
+  authDomain: "luminosmc-4ee70.firebaseapp.com",
+  projectId: "luminosmc-4ee70",
+  storageBucket: "luminosmc-4ee70.firebasestorage.app",
+  messagingSenderId: "125483937552",
+  appId: "1:125483937552:web:ea9264b2da064b7ed3ff95",
+  measurementId: "G-0Q8THWCHXY"
 };
 
 const app = initializeApp(firebaseConfig);
