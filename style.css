@@ -1,5 +1,6 @@
 /* ========================================
    LUMINOS MC - STYLE.CSS
+   Gaming/Community Dark Theme
    ======================================== */
 
 * {
@@ -166,6 +167,7 @@ body {
 .hint a {
   color: #00f0ff;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .hint a:hover {
@@ -548,7 +550,7 @@ body {
 }
 
 /* ========================================
-   LISTS (Staff/Products)
+   LISTS (Roles/Users/Products)
    ======================================== */
 
 .list-item {
@@ -590,21 +592,20 @@ body {
   font-size: 0.85em;
   font-weight: 600;
   margin: 5px 0;
-}
-
-.role-admin {
-  background: linear-gradient(135deg, #ff3366 0%, #cc0044 100%);
-  color: white;
-}
-
-.role-moderator {
-  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
-  color: white;
-}
-
-.role-helper {
   background: linear-gradient(135deg, #00f0ff 0%, #00c0cc 100%);
   color: #0a0e27;
+}
+
+.permission-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 0.75em;
+  font-weight: 600;
+  margin: 3px;
+  background: rgba(0, 240, 255, 0.2);
+  color: #00f0ff;
+  border: 1px solid rgba(0, 240, 255, 0.3);
 }
 
 /* ========================================
@@ -689,6 +690,12 @@ body {
   border-left: 4px solid;
   display: none;
   animation: slideDown 0.3s ease;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 3000;
+  min-width: 300px;
+  max-width: 500px;
 }
 
 .alert.active {
@@ -718,6 +725,12 @@ body {
   color: #ff3366;
 }
 
+.alert-warning {
+  background: rgba(255, 165, 0, 0.1);
+  border-color: #ffa500;
+  color: #ffa500;
+}
+
 /* ========================================
    FOOTER
    ======================================== */
@@ -728,37 +741,6 @@ body {
   padding: 30px 20px;
   text-align: center;
   margin-top: 60px;
-}
-
-/* ========================================
-   PAGINATION
-   ======================================== */
-
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 15px;
-  margin-top: 30px;
-  padding: 20px;
-  background: rgba(0, 240, 255, 0.05);
-  border-radius: 8px;
-}
-
-.pagination button {
-  padding: 10px 20px;
-  min-width: 120px;
-}
-
-/* ========================================
-   ROLE BADGE OWNER
-   ======================================== */
-
-.role-owner {
-  background: linear-gradient(135deg, #ff00ff 0%, #cc00cc 100%);
-  color: white;
-  font-weight: 700;
-  text-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
 }
 
 /* ========================================
@@ -793,5 +775,11 @@ body {
 
   .tab-btn {
     width: 100%;
+  }
+
+  .alert {
+    right: 10px;
+    left: 10px;
+    min-width: auto;
   }
 }

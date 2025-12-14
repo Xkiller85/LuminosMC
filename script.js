@@ -1,987 +1,1216 @@
-/* LUMINOS MC - SISTEMA COMPLETO */
+/* ========================================
+   LUMINOS MC - SCRIPT.JS
+   Firebase Integration with Dynamic Roles System
+   ======================================== */
 
-let currentUser = null;
-let currentAdmin = null;
-let editingId = null;
-let isRegistering = false;
+// Firebase SDK v9+ Modular Imports
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendEmailVerification
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  addDoc
+} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-const OWNER = {
-  id: 'owner_themarck',
-  username: 'TheMarck_MC',
-  password: '1234',
-  role: 'owner'
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAp3juPC1YnzBbTWdK0qtGEdj8UcRwpjUA",
+  authDomain: "luminosmc-4ee70.firebaseapp.com",
+  projectId: "luminosmc-4ee70",
+  storageBucket: "luminosmc-4ee70.firebasestorage.app",
+  messagingSenderId: "125483937552",
+  appId: "1:125483937552:web:ea9264b2da064b7ed3ff95",
+  measurementId: "G-0Q8THWCHXY"
 };
 
-/* STORAGE */
-async function saveData(key, data) {
-  try {
-    if (window.storage) {
-      await window.storage.set(key, JSON.stringify(data), true);
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Global State
+let currentUser = null;
+let currentUserData = null;
+let currentUserRole = null;
+let allRoles = [];
+let editingId = null;
+let editingUserId = null;
+
+/* ========================================
+   INITIALIZATION
+   ======================================== */
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Setup auth state listener
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      await loadUserData(user.uid);
+      updateUserInfo();
+      setupRealtimeListeners();
     } else {
-      localStorage.setItem(key, JSON.stringify(data));
+      currentUser = null;
+      currentUserData = null;
+      currentUserRole = null;
+      updateUserInfo();
     }
-  } catch (e) { console.error(e); }
-}
+  });
 
-async function loadData(key, def = null) {
-  try {
-    if (window.storage) {
-      const r = await window.storage.get(key, true);
-      return r ? JSON.parse(r.value) : def;
-    }
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : def;
-  } catch (e) { return def; }
-}
-
-async function saveSession(user) {
-  try {
-    if (window.storage) {
-      await window.storage.set('session', JSON.stringify(user), false);
-    } else {
-      sessionStorage.setItem('session', JSON.stringify(user));
-    }
-  } catch (e) { console.error(e); }
-}
-
-async function loadSession() {
-  try {
-    if (window.storage) {
-      const r = await window.storage.get('session', false);
-      return r ? JSON.parse(r.value) : null;
-    }
-    const v = sessionStorage.getItem('session');
-    return v ? JSON.parse(v) : null;
-  } catch (e) { return null; }
-}
-
-async function clearSession() {
-  try {
-    if (window.storage) {
-      await window.storage.delete('session', false);
-    } else {
-      sessionStorage.removeItem('session');
-    }
-  } catch (e) {}
-}
-
-/* INIT */
-document.addEventListener('DOMContentLoaded', async function() {
-  await initSystem();
-  await restoreSession();
-  await renderStore();
-  populateRoleSelects();
+  // Close modal on outside click
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal(this.id);
+      }
+    });
+  });
 });
 
-async function initSystem() {
-  const roles = await loadData('roles', []);
-  if (roles.length === 0) {
-    await saveData('roles', [
-      { id: 'owner', name: 'Owner', permissions: ['all'] },
-      { id: 'admin', name: 'Admin', permissions: ['manage_forum', 'manage_staff', 'manage_store', 'view_database'] },
-      { id: 'moderator', name: 'Moderatore', permissions: ['manage_forum'] },
-      { id: 'utente', name: 'Utente', permissions: [] }
-    ]);
+/* ========================================
+   AUTHENTICATION
+   ======================================== */
+
+window.toggleAuthMode = function() {
+  const loginSection = document.getElementById('loginSection');
+  const registerSection = document.getElementById('registerSection');
+  
+  if (loginSection.style.display === 'none') {
+    loginSection.style.display = 'block';
+    registerSection.style.display = 'none';
+  } else {
+    loginSection.style.display = 'none';
+    registerSection.style.display = 'block';
+  }
+};
+
+window.handleRegister = async function() {
+  const username = document.getElementById('registerUsername').value.trim();
+  const email = document.getElementById('registerEmail').value.trim();
+  const password = document.getElementById('registerPassword').value;
+
+  if (!username || !email || !password) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
   }
 
-  const products = await loadData('products', []);
-  if (products.length === 0) {
-    await saveData('products', [
-      { id: 'prod_1', name: "VIP Bronze", price: 4.99, features: ["Prefix dedicato", "Kit giornaliero", "Queue prioritaria"], featured: false },
-      { id: 'prod_2', name: "VIP Silver", price: 9.99, features: ["Tutto di Bronze", "Particles esclusive", "/hat e /nick"], featured: false },
-      { id: 'prod_3', name: "VIP Gold", price: 14.99, features: ["Tutto di Silver", "Kit potenziato", "Slot riservato"], featured: true }
-    ]);
+  if (password.length < 6) {
+    showAlert('La password deve essere almeno di 6 caratteri!', 'error');
+    return;
   }
-}
 
-async function restoreSession() {
-  const s = await loadSession();
-  if (s) {
-    if (s.isAdmin) {
-      currentAdmin = s;
-      showAdminPanel();
+  try {
+    // Create user in Firebase Auth
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Send email verification
+    await sendEmailVerification(user);
+
+    // Check if this is the first user (will be owner)
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const isFirstUser = usersSnapshot.empty;
+
+    // Assign role: first user becomes owner, others get default role
+    let assignedRole = 'user';
+    if (isFirstUser) {
+      assignedRole = 'owner';
+      // Create owner role if not exists
+      await ensureOwnerRoleExists();
+    }
+
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', user.uid), {
+      email: email,
+      username: username,
+      role: assignedRole,
+      createdAt: serverTimestamp()
+    });
+
+    showAlert(`Registrazione completata! ${isFirstUser ? 'Sei stato assegnato come OWNER.' : ''} Controlla la tua email per verificare l'account.`, 'success');
+    
+    // Clear form
+    document.getElementById('registerUsername').value = '';
+    document.getElementById('registerEmail').value = '';
+    document.getElementById('registerPassword').value = '';
+    
+    // Switch to login
+    toggleAuthMode();
+  } catch (error) {
+    console.error('Registration error:', error);
+    if (error.code === 'auth/email-already-in-use') {
+      showAlert('Questa email è già registrata!', 'error');
     } else {
-      const users = await loadData('users', []);
-      const user = users.find(u => u.id === s.id);
-      if (user) {
-        currentUser = user;
-        updateUserInfo();
-        document.getElementById('forumCreatePost').style.display = 'block';
-        document.getElementById('userPostsCard').style.display = 'block';
-      }
+      showAlert('Errore durante la registrazione: ' + error.message, 'error');
     }
   }
-}
+};
 
-/* ADMIN LOGIN */
-async function handleAdminLogin() {
-  const username = document.getElementById('adminUsername').value.trim();
-  const password = document.getElementById('adminPassword').value;
-
-  if (username === OWNER.username && password === OWNER.password) {
-    currentAdmin = { ...OWNER, isAdmin: true };
-    await saveSession({ ...OWNER, isAdmin: true });
-    showAdminPanel();
-    showAlert('Accesso Owner!', 'success');
-    return;
-  }
-
-  const staff = await loadData('staff', []);
-  const member = staff.find(s => s.username === username && s.password === password);
-  
-  if (member) {
-    currentAdmin = { ...member, isAdmin: true };
-    await saveSession({ ...member, isAdmin: true });
-    showAdminPanel();
-    showAlert('Accesso Staff!', 'success');
-  } else {
-    showAlert('Credenziali errate!', 'error');
-  }
-}
-
-function showAdminPanel() {
-  document.getElementById('adminLoginSection').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'block';
-  renderAdminContent();
-}
-
-async function logoutAdmin() {
-  currentAdmin = null;
-  await clearSession();
-  document.getElementById('adminLoginSection').style.display = 'block';
-  document.getElementById('adminPanel').style.display = 'none';
-  showAlert('Logout!', 'success');
-}
-
-function isOwner() {
-  return currentAdmin && currentAdmin.role === 'owner';
-}
-
-/* USER AUTH */
-function switchToRegister() {
-  isRegistering = !isRegistering;
-  const title = document.getElementById('loginTitle');
-  const hint = document.getElementById('loginHint');
-  const button = document.getElementById('loginBtn');
-  
-  if (isRegistering) {
-    title.textContent = '📝 Registrazione';
-    hint.innerHTML = 'Hai già un account? <a onclick="switchToRegister()">Accedi</a><br>oppure <a onclick="showPage(\'home\')">torna alla home</a>';
-    button.textContent = 'Registrati';
-    button.onclick = handleRegister;
-  } else {
-    title.textContent = '🔐 Login';
-    hint.innerHTML = 'Non hai un account? <a onclick="switchToRegister()">Registrati</a><br>oppure <a onclick="showPage(\'home\')">torna alla home</a>';
-    button.textContent = 'Accedi';
-    button.onclick = handleLogin;
-  }
-}
-
-async function handleRegister() {
-  const username = document.getElementById('loginUsername').value.trim();
+window.handleLogin = async function() {
+  const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
 
-  if (!username || !password) {
+  if (!email || !password) {
     showAlert('Compila tutti i campi!', 'error');
     return;
   }
 
-  if (username.length < 3 || password.length < 4) {
-    showAlert('Username min 3, Password min 4!', 'error');
-    return;
-  }
-
-  const users = await loadData('users', []);
-  
-  if (users.find(u => u.username === username)) {
-    showAlert('Username esistente!', 'error');
-    return;
-  }
-
-  const newUser = {
-    id: 'user_' + Date.now(),
-    username: username,
-    password: password,
-    role: 'utente',
-    created: new Date().toISOString().split('T')[0]
-  };
-
-  users.push(newUser);
-  await saveData('users', users);
-  
-  showAlert('Registrato! Accedi ora.', 'success');
-  switchToRegister();
-  document.getElementById('loginUsername').value = username;
-  document.getElementById('loginPassword').value = '';
-}
-
-async function handleLogin() {
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
-
-  if (!username || !password) {
-    showAlert('Compila tutti i campi!', 'error');
-    return;
-  }
-
-  const users = await loadData('users', []);
-  const user = users.find(u => u.username === username && u.password === password);
-
-  if (user) {
-    currentUser = user;
-    await saveSession({ ...user, isAdmin: false });
-    showAlert('Login OK!', 'success');
-    updateUserInfo();
-    showPage('home');
-    
-    document.getElementById('forumCreatePost').style.display = 'block';
-    document.getElementById('userPostsCard').style.display = 'block';
-    document.getElementById('loginUsername').value = '';
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    showAlert('Login effettuato con successo!', 'success');
+    document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
-  } else {
-    showAlert('Credenziali errate!', 'error');
+    showPage('home');
+  } catch (error) {
+    console.error('Login error:', error);
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      showAlert('Email o password errati!', 'error');
+    } else {
+      showAlert('Errore durante il login: ' + error.message, 'error');
+    }
   }
-}
+};
 
-async function logout() {
-  currentUser = null;
-  await clearSession();
-  updateUserInfo();
-  showPage('home');
-  showAlert('Logout!', 'success');
-  
-  document.getElementById('forumCreatePost').style.display = 'none';
-  document.getElementById('userPostsCard').style.display = 'none';
+window.logout = async function() {
+  try {
+    await signOut(auth);
+    showAlert('Logout effettuato con successo!', 'success');
+    showPage('home');
+  } catch (error) {
+    console.error('Logout error:', error);
+    showAlert('Errore durante il logout', 'error');
+  }
+};
+
+async function loadUserData(uid) {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      currentUserData = { id: uid, ...userDoc.data() };
+      
+      // Load user's role with permissions
+      if (currentUserData.role) {
+        const roleDoc = await getDoc(doc(db, 'roles', currentUserData.role));
+        if (roleDoc.exists()) {
+          currentUserRole = { id: roleDoc.id, ...roleDoc.data() };
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading user data:', error);
+  }
 }
 
 function updateUserInfo() {
   const userInfo = document.getElementById('userInfo');
-  
-  if (currentUser) {
+  const adminBtn = document.getElementById('adminBtn');
+  const createPostSection = document.getElementById('createPostSection');
+  const myPostsSection = document.getElementById('myPostsSection');
+
+  if (currentUser && currentUserData) {
     userInfo.innerHTML = `
-      <span>👤 ${escapeHtml(currentUser.username)}</span>
-      <span class="role-badge role-${currentUser.role}">${currentUser.role}</span>
+      <span>👤 ${currentUserData.username}</span>
       <button class="btn-logout" onclick="logout()">Esci</button>
     `;
+    
+    // Show admin button if user has permission
+    if (currentUserRole && currentUserRole.permissions && currentUserRole.permissions.accessAdminPanel) {
+      adminBtn.style.display = 'inline-block';
+    } else {
+      adminBtn.style.display = 'none';
+    }
+
+    // Show create post section
+    if (createPostSection) createPostSection.style.display = 'block';
+    if (myPostsSection) myPostsSection.style.display = 'block';
   } else {
-    userInfo.innerHTML = '';
+    userInfo.innerHTML = `
+      <button class="nav-btn" onclick="showPage('auth')">🔐 Login</button>
+    `;
+    adminBtn.style.display = 'none';
+    if (createPostSection) createPostSection.style.display = 'none';
+    if (myPostsSection) myPostsSection.style.display = 'none';
   }
 }
 
-/* NAVIGATION */
-function showPage(pageName) {
-  if (pageName === 'forum' && !currentUser) {
-    showAlert('Devi registrarti!', 'error');
-    showPage('login');
-    return;
+async function ensureOwnerRoleExists() {
+  try {
+    const ownerRoleDoc = await getDoc(doc(db, 'roles', 'owner'));
+    if (!ownerRoleDoc.exists()) {
+      await setDoc(doc(db, 'roles', 'owner'), {
+        name: 'Owner',
+        permissions: {
+          accessAdminPanel: true,
+          manageStore: true,
+          manageForum: true,
+          manageUsers: true,
+          manageRoles: true
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error creating owner role:', error);
   }
-  
+}
+
+function hasPermission(permission) {
+  if (!currentUserRole || !currentUserRole.permissions) return false;
+  return currentUserRole.permissions[permission] === true;
+}
+
+function isOwner() {
+  return currentUserData && currentUserData.role === 'owner';
+}
+
+/* ========================================
+   PAGE NAVIGATION
+   ======================================== */
+
+window.showPage = function(pageName) {
+  // Check admin access
   if (pageName === 'admin') {
-    document.getElementById('adminLoginSection').style.display = currentAdmin ? 'none' : 'block';
-    document.getElementById('adminPanel').style.display = currentAdmin ? 'block' : 'none';
+    if (!currentUser || !hasPermission('accessAdminPanel')) {
+      showAlert('Accesso negato! Non hai i permessi per accedere al pannello admin.', 'error');
+      return;
+    }
   }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-  
-  const page = document.getElementById(pageName);
-  if (page) page.classList.add('active');
-  
-  const navBtn = document.querySelector(`[data-page="${pageName}"]`);
-  if (navBtn) navBtn.classList.add('active');
-  
-  if (pageName === 'forum') {
-    renderUserPosts();
-    renderAllPosts();
-  }
-  if (pageName === 'store') renderStore();
-  if (pageName === 'admin' && currentAdmin) renderAdminContent();
-}
 
-function showAdminTab(tabName) {
+  const page = document.getElementById(pageName);
+  if (page) {
+    page.classList.add('active');
+  }
+
+  const navBtn = document.querySelector(`[data-page="${pageName}"]`);
+  if (navBtn) {
+    navBtn.classList.add('active');
+  }
+
+  if (pageName === 'admin') {
+    loadAllRoles();
+    updateStats();
+  }
+};
+
+/* ========================================
+   ADMIN TABS
+   ======================================== */
+
+window.showAdminTab = function(tabName) {
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.admin-tab').forEach(tab => tab.classList.remove('active'));
-  
-  const tab = document.getElementById('admin-' + tabName);
-  if (tab) tab.classList.add('active');
-  
+
+  const tab = document.getElementById(tabName);
+  if (tab) {
+    tab.classList.add('active');
+  }
+
   const btn = document.querySelector(`[data-tab="${tabName}"]`);
-  if (btn) btn.classList.add('active');
+  if (btn) {
+    btn.classList.add('active');
+  }
 
-  renderAdminContent();
+  // Load content based on tab
+  if (tabName === 'rolesTab') {
+    loadAllRoles();
+    renderRolesList();
+  } else if (tabName === 'usersTab') {
+    renderUsersList();
+  } else if (tabName === 'postsTab') {
+    renderAdminPosts();
+  } else if (tabName === 'productsTab') {
+    renderProductsList();
+  }
+};
+
+/* ========================================
+   ROLES MANAGEMENT (OWNER ONLY)
+   ======================================== */
+
+async function loadAllRoles() {
+  try {
+    const rolesSnapshot = await getDocs(collection(db, 'roles'));
+    allRoles = [];
+    rolesSnapshot.forEach((doc) => {
+      allRoles.push({ id: doc.id, ...doc.data() });
+    });
+  } catch (error) {
+    console.error('Error loading roles:', error);
+  }
 }
 
-async function renderAdminContent() {
-  await renderAdminForum();
-  await renderStaffList();
-  await renderAdminStore();
-  await renderDatabase();
-  await renderRolesList();
-}
-
-/* FORUM UTENTI */
-async function createPost() {
-  if (!currentUser) return showAlert('Loggati!', 'error');
-  
-  const nickname = document.getElementById('postNickname').value.trim();
-  const title = document.getElementById('postTitle').value.trim();
-  const description = document.getElementById('postDescription').value.trim();
-  
-  if (!nickname || !title || !description) return showAlert('Compila tutto!', 'error');
-  if (title.length < 5 || description.length < 10) return showAlert('Titolo min 5, Descrizione min 10!', 'error');
-  
-  const posts = await loadData('posts', []);
-  
-  posts.push({
-    id: 'post_' + Date.now(),
-    userId: currentUser.id,
-    username: currentUser.username,
-    nickname: nickname,
-    title: title,
-    descriptions: [{
-      id: 'desc_' + Date.now(),
-      content: description,
-      date: new Date().toISOString().split('T')[0]
-    }],
-    replies: [],
-    date: new Date().toISOString().split('T')[0]
-  });
-  
-  await saveData('posts', posts);
-  
-  document.getElementById('postNickname').value = '';
-  document.getElementById('postTitle').value = '';
-  document.getElementById('postDescription').value = '';
-  
-  await renderUserPosts();
-  await renderAllPosts();
-  showAlert('Post pubblicato!', 'success');
-}
-
-async function renderUserPosts() {
-  const list = document.getElementById('userPostsList');
-  if (!list || !currentUser) return;
-  
-  const posts = await loadData('posts', []);
-  const userPosts = posts.filter(p => p.userId === currentUser.id);
-  
-  if (userPosts.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessun post.</p>';
+window.createRole = async function() {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può creare nuovi ruoli!', 'error');
     return;
   }
-  
-  list.innerHTML = userPosts.map(post => `
-    <div class="post">
-      <h4>📌 ${escapeHtml(post.title)}</h4>
-      <div class="post-meta">Nickname: ${escapeHtml(post.nickname)} | ${post.date}</div>
-      
-      <div style="margin-top: 15px;"><strong>Descrizioni:</strong>
-        ${post.descriptions.map(d => `
-          <div class="reply" style="margin: 10px 0;">
-            <p>${escapeHtml(d.content)}</p>
-            <div class="reply-meta">${d.date}</div>
-          </div>
-        `).join('')}
+
+  const roleName = document.getElementById('roleName').value.trim();
+  const permissions = {
+    accessAdminPanel: document.getElementById('permAccessAdmin').checked,
+    manageStore: document.getElementById('permManageStore').checked,
+    manageForum: document.getElementById('permManageForum').checked,
+    manageUsers: document.getElementById('permManageUsers').checked
+  };
+
+  if (!roleName) {
+    showAlert('Inserisci un nome per il ruolo!', 'error');
+    return;
+  }
+
+  try {
+    const roleId = roleName.toLowerCase().replace(/\s+/g, '_');
+    await setDoc(doc(db, 'roles', roleId), {
+      name: roleName,
+      permissions: permissions
+    });
+
+    showAlert('Ruolo creato con successo!', 'success');
+    
+    // Clear form
+    document.getElementById('roleName').value = '';
+    document.getElementById('permAccessAdmin').checked = false;
+    document.getElementById('permManageStore').checked = false;
+    document.getElementById('permManageForum').checked = false;
+    document.getElementById('permManageUsers').checked = false;
+
+    await loadAllRoles();
+    renderRolesList();
+  } catch (error) {
+    console.error('Error creating role:', error);
+    showAlert('Errore durante la creazione del ruolo', 'error');
+  }
+};
+
+async function renderRolesList() {
+  const rolesList = document.getElementById('rolesList');
+  if (!rolesList) return;
+
+  await loadAllRoles();
+
+  if (allRoles.length === 0) {
+    rolesList.innerHTML = '<p style="color: #8899aa;">Nessun ruolo presente.</p>';
+    return;
+  }
+
+  rolesList.innerHTML = allRoles.map(role => `
+    <div class="list-item">
+      <h4>${role.name} ${role.id === 'owner' ? '👑' : ''}</h4>
+      <div class="list-item-meta">
+        <strong>Permessi:</strong><br>
+        ${role.permissions.accessAdminPanel ? '<span class="permission-badge">Pannello Admin</span>' : ''}
+        ${role.permissions.manageStore ? '<span class="permission-badge">Gestione Store</span>' : ''}
+        ${role.permissions.manageForum ? '<span class="permission-badge">Gestione Forum</span>' : ''}
+        ${role.permissions.manageUsers ? '<span class="permission-badge">Gestione Utenti</span>' : ''}
+        ${!role.permissions.accessAdminPanel && !role.permissions.manageStore && !role.permissions.manageForum && !role.permissions.manageUsers ? '<span style="color: #8899aa;">Nessun permesso</span>' : ''}
       </div>
-      
-      ${post.replies.length > 0 ? `
-        <div style="margin-top: 15px;"><strong>Risposte Admin (${post.replies.length}):</strong>
-          ${post.replies.map(r => `
-            <div class="reply">
-              <p>${escapeHtml(r.content)}</p>
-              <div class="reply-meta">${escapeHtml(r.author)} | ${r.date}</div>
-            </div>
-          `).join('')}
+      ${isOwner() && role.id !== 'owner' ? `
+        <div class="list-item-actions">
+          <button class="btn btn-warning" onclick="editRole('${role.id}')">✏️ Modifica</button>
+          <button class="btn btn-danger" onclick="deleteRole('${role.id}')">🗑️ Elimina</button>
         </div>
-      ` : ''}
-      
-      <div class="post-actions">
-        <button class="btn btn-success" onclick="addDescription('${post.id}')">➕ Aggiungi</button>
-        <button class="btn btn-danger" onclick="deleteUserPost('${post.id}')">🗑️ Elimina</button>
-      </div>
+      ` : role.id === 'owner' ? '<div class="list-item-meta" style="color: #00ff64;">⚠️ Il ruolo Owner non può essere modificato o eliminato</div>' : ''}
     </div>
   `).join('');
+}
+
+window.editRole = async function(roleId) {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può modificare i ruoli!', 'error');
+    return;
+  }
+
+  try {
+    const roleDoc = await getDoc(doc(db, 'roles', roleId));
+    if (!roleDoc.exists()) return;
+
+    const role = roleDoc.data();
+    editingId = roleId;
+
+    document.getElementById('editRoleName').value = role.name;
+    document.getElementById('editPermAccessAdmin').checked = role.permissions.accessAdminPanel || false;
+    document.getElementById('editPermManageStore').checked = role.permissions.manageStore || false;
+    document.getElementById('editPermManageForum').checked = role.permissions.manageForum || false;
+    document.getElementById('editPermManageUsers').checked = role.permissions.manageUsers || false;
+
+    openModal('editRoleModal');
+  } catch (error) {
+    console.error('Error loading role:', error);
+    showAlert('Errore durante il caricamento del ruolo', 'error');
+  }
+};
+
+window.saveEditRole = async function() {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può modificare i ruoli!', 'error');
+    return;
+  }
+
+  const roleName = document.getElementById('editRoleName').value.trim();
+  const permissions = {
+    accessAdminPanel: document.getElementById('editPermAccessAdmin').checked,
+    manageStore: document.getElementById('editPermManageStore').checked,
+    manageForum: document.getElementById('editPermManageForum').checked,
+    manageUsers: document.getElementById('editPermManageUsers').checked
+  };
+
+  if (!roleName) {
+    showAlert('Inserisci un nome per il ruolo!', 'error');
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, 'roles', editingId), {
+      name: roleName,
+      permissions: permissions
+    });
+
+    showAlert('Ruolo modificato con successo!', 'success');
+    closeModal('editRoleModal');
+    await loadAllRoles();
+    renderRolesList();
+  } catch (error) {
+    console.error('Error updating role:', error);
+    showAlert('Errore durante la modifica del ruolo', 'error');
+  }
+};
+
+window.deleteRole = async function(roleId) {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può eliminare i ruoli!', 'error');
+    return;
+  }
+
+  if (roleId === 'owner') {
+    showAlert('Non puoi eliminare il ruolo Owner!', 'error');
+    return;
+  }
+
+  if (!confirm('Sei sicuro di voler eliminare questo ruolo?')) {
+    return;
+  }
+
+  try {
+    // Check if any user has this role
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    let hasUsers = false;
+    usersSnapshot.forEach((doc) => {
+      if (doc.data().role === roleId) {
+        hasUsers = true;
+      }
+    });
+
+    if (hasUsers) {
+      showAlert('Non puoi eliminare questo ruolo perché è assegnato ad alcuni utenti!', 'error');
+      return;
+    }
+
+    await deleteDoc(doc(db, 'roles', roleId));
+    showAlert('Ruolo eliminato con successo!', 'success');
+    await loadAllRoles();
+    renderRolesList();
+  } catch (error) {
+    console.error('Error deleting role:', error);
+    showAlert('Errore durante l\'eliminazione del ruolo', 'error');
+  }
+};
+
+/* ========================================
+   USERS MANAGEMENT
+   ======================================== */
+
+async function renderUsersList() {
+  const usersList = document.getElementById('usersList');
+  if (!usersList) return;
+
+  if (!hasPermission('manageUsers')) {
+    usersList.innerHTML = '<p style="color: #ff3366;">Non hai i permessi per gestire gli utenti.</p>';
+    return;
+  }
+
+  try {
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const users = [];
+    usersSnapshot.forEach((doc) => {
+      users.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (users.length === 0) {
+      usersList.innerHTML = '<p style="color: #8899aa;">Nessun utente presente.</p>';
+      return;
+    }
+
+    usersList.innerHTML = users.map(user => `
+      <div class="list-item">
+        <h4>${user.username} ${user.role === 'owner' ? '👑' : ''}</h4>
+        <div class="list-item-meta">Email: ${user.email}</div>
+        <div class="list-item-meta">
+          Ruolo: <span class="role-badge">${user.role}</span>
+        </div>
+        <div class="list-item-meta">Registrato: ${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+        ${isOwner() && user.id !== currentUser.uid ? `
+          <div class="list-item-actions">
+            <button class="btn btn-primary" onclick="openAssignRoleModal('${user.id}')">🔄 Cambia Ruolo</button>
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading users:', error);
+    usersList.innerHTML = '<p style="color: #ff3366;">Errore durante il caricamento degli utenti.</p>';
+  }
+}
+
+window.openAssignRoleModal = async function(userId) {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può modificare i ruoli degli utenti!', 'error');
+    return;
+  }
+
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) return;
+
+    const user = userDoc.data();
+    editingUserId = userId;
+
+    document.getElementById('assignRoleUserInfo').innerHTML = `
+      <p><strong>Utente:</strong> ${user.username}</p>
+      <p><strong>Email:</strong> ${user.email}</p>
+      <p><strong>Ruolo attuale:</strong> <span class="role-badge">${user.role}</span></p>
+    `;
+
+    // Load roles into select
+    await loadAllRoles();
+    const select = document.getElementById('assignRoleSelect');
+    select.innerHTML = allRoles.map(role => `
+      <option value="${role.id}" ${role.id === user.role ? 'selected' : ''}>${role.name}</option>
+    `).join('');
+
+    openModal('assignRoleModal');
+  } catch (error) {
+    console.error('Error loading user:', error);
+    showAlert('Errore durante il caricamento dell\'utente', 'error');
+  }
+};
+
+window.saveAssignRole = async function() {
+  if (!isOwner()) {
+    showAlert('Solo l\'owner può modificare i ruoli degli utenti!', 'error');
+    return;
+  }
+
+  const newRole = document.getElementById('assignRoleSelect').value;
+
+  if (!newRole) {
+    showAlert('Seleziona un ruolo!', 'error');
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, 'users', editingUserId), {
+      role: newRole
+    });
+
+    showAlert('Ruolo aggiornato con successo!', 'success');
+    closeModal('assignRoleModal');
+    renderUsersList();
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    showAlert('Errore durante l\'aggiornamento del ruolo', 'error');
+  }
+};
+
+/* ========================================
+   POSTS MANAGEMENT
+   ======================================== */
+
+function setupRealtimeListeners() {
+  // Listen to posts changes
+  const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+  onSnapshot(postsQuery, (snapshot) => {
+    renderAllPosts();
+    renderUserPosts();
+    if (hasPermission('manageForum')) {
+      renderAdminPosts();
+    }
+  });
+
+  // Listen to products changes
+  const productsQuery = query(collection(db, 'products'));
+  onSnapshot(productsQuery, (snapshot) => {
+    renderStore();
+    if (hasPermission('manageStore')) {
+      renderProductsList();
+    }
+  });
 }
 
 async function renderAllPosts() {
-  const list = document.getElementById('allPostsList');
-  if (!list) return;
-  
-  const posts = await loadData('posts', []);
-  const search = document.getElementById('searchPosts')?.value.toLowerCase() || '';
-  
-  let filtered = posts;
-  if (search) {
-    filtered = posts.filter(p => 
-      p.title.toLowerCase().includes(search) ||
-      p.nickname.toLowerCase().includes(search) ||
-      p.username.toLowerCase().includes(search)
-    );
-  }
-  
-  if (filtered.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessun post.</p>';
-    return;
-  }
-  
-  list.innerHTML = filtered.map(post => `
-    <div class="post">
-      <h4>📌 ${escapeHtml(post.title)}</h4>
-      <div class="post-meta">${escapeHtml(post.username)} | Nickname: ${escapeHtml(post.nickname)} | ${post.date}</div>
-      
-      <div style="margin-top: 15px;"><strong>Descrizioni:</strong>
-        ${post.descriptions.map(d => `
-          <div class="reply" style="margin: 10px 0;">
-            <p>${escapeHtml(d.content)}</p>
-            <div class="reply-meta">${d.date}</div>
-          </div>
-        `).join('')}
-      </div>
-      
-      ${post.replies.length > 0 ? `
-        <div style="margin-top: 15px;"><strong>Risposte Admin (${post.replies.length}):</strong>
-          ${post.replies.map(r => `
-            <div class="reply">
-              <p>${escapeHtml(r.content)}</p>
-              <div class="reply-meta">${escapeHtml(r.author)} | ${r.date}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-    </div>
-  `).join('');
-}
+  const allPostsList = document.getElementById('allPostsList');
+  if (!allPostsList) return;
 
-async function addDescription(postId) {
-  const posts = await loadData('posts', []);
-  const post = posts.find(p => p.id === postId);
-  
-  if (!post || post.userId !== currentUser?.id) return showAlert('Non puoi!', 'error');
-  
-  const content = prompt('Nuova descrizione:');
-  
-  if (content && content.length >= 10) {
-    post.descriptions.push({
-      id: 'desc_' + Date.now(),
-      content: content,
-      date: new Date().toISOString().split('T')[0]
+  try {
+    const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    const postsSnapshot = await getDocs(postsQuery);
+    const posts = [];
+    postsSnapshot.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() });
     });
-    
-    await saveData('posts', posts);
-    await renderUserPosts();
-    await renderAllPosts();
-    showAlert('Aggiunta!', 'success');
-  } else if (content) {
-    showAlert('Min 10 caratteri!', 'error');
-  }
-}
 
-async function deleteUserPost(postId) {
-  if (!confirm('Eliminare?')) return;
-  
-  const posts = await loadData('posts', []);
-  const post = posts.find(p => p.id === postId);
-  
-  if (!post || post.userId !== currentUser?.id) return showAlert('Non puoi!', 'error');
-  
-  const updated = posts.filter(p => p.id !== postId);
-  await saveData('posts', updated);
-  await renderUserPosts();
-  await renderAllPosts();
-  showAlert('Eliminato!', 'success');
-}
+    if (posts.length === 0) {
+      allPostsList.innerHTML = '<p style="color: #8899aa;">Nessun post presente.</p>';
+      return;
+    }
 
-/* ADMIN FORUM */
-async function renderAdminForum() {
-  const list = document.getElementById('adminForumList');
-  if (!list) return;
-  
-  const posts = await loadData('posts', []);
-  const search = document.getElementById('adminSearchForum')?.value.toLowerCase() || '';
-  
-  let filtered = posts;
-  if (search) {
-    filtered = posts.filter(p => 
-      p.username.toLowerCase().includes(search) ||
-      p.title.toLowerCase().includes(search)
-    );
-  }
-  
-  if (filtered.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessun post.</p>';
-    return;
-  }
-  
-  list.innerHTML = filtered.map(post => `
-    <div class="post">
-      <h4>👤 ${escapeHtml(post.username)}</h4>
-      <div style="margin: 10px 0;"><strong style="color: #00f0ff;">📌 ${escapeHtml(post.title)}</strong></div>
-      
-      <div style="margin-top: 15px;"><strong>Descrizioni:</strong>
-        ${post.descriptions.map(d => `
-          <div class="reply" style="margin: 10px 0;">
-            <p>${escapeHtml(d.content)}</p>
-            <div class="reply-meta">${d.date}</div>
+    allPostsList.innerHTML = posts.map(post => `
+      <div class="post">
+        <h4>${post.title}</h4>
+        <p>${post.content}</p>
+        <div class="post-meta">Autore: ${post.authorName} | Data: ${post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+        ${post.replies && post.replies.length > 0 ? `
+          <div class="post-replies">
+            <strong>Risposte (${post.replies.length}):</strong>
+            ${post.replies.map(reply => `
+              <div class="reply">
+                <p>${reply.content}</p>
+                <div class="reply-meta">Da: ${reply.authorName} | ${reply.createdAt ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+              </div>
+            `).join('')}
           </div>
-        `).join('')}
+        ` : ''}
       </div>
-      
-      ${post.replies.length > 0 ? `
-        <div style="margin-top: 15px;"><strong>Tue Risposte (${post.replies.length}):</strong>
-          ${post.replies.map(r => `
-            <div class="reply">
-              <p>${escapeHtml(r.content)}</p>
-              <div class="reply-meta">${escapeHtml(r.author)} | ${r.date}</div>
-            </div>
-          `).join('')}
-        </div>
-      ` : ''}
-      
-      <div class="post-meta">${post.date}</div>
-      
-      <div class="post-actions">
-        <button class="btn btn-success" onclick="replyToPost('${post.id}')">💬 Rispondi</button>
-        ${isOwner() ? `<button class="btn btn-danger" onclick="deleteAdminPost('${post.id}')">🗑️ Elimina</button>` : ''}
-      </div>
-    </div>
-  `).join('');
+    `).join('');
+  } catch (error) {
+    console.error('Error loading posts:', error);
+  }
 }
 
-async function replyToPost(postId) {
-  const posts = await loadData('posts', []);
-  const post = posts.find(p => p.id === postId);
-  if (!post) return;
-  
-  editingId = postId;
-  document.getElementById('replyPostPreview').innerHTML = `
-    <h4>${escapeHtml(post.title)}</h4>
-    <p><strong>Di:</strong> ${escapeHtml(post.username)}</p>
-  `;
-  document.getElementById('replyContent').value = '';
-  openModal('replyPostModal');
-}
+async function renderUserPosts() {
+  const userPostsList = document.getElementById('userPostsList');
+  if (!userPostsList || !currentUser) return;
 
-async function saveReply() {
-  const content = document.getElementById('replyContent').value.trim();
-  
-  if (!content || content.length < 3) return showAlert('Min 3 caratteri!', 'error');
-  
-  const posts = await loadData('posts', []);
-  const post = posts.find(p => p.id === editingId);
-  
-  if (post) {
-    post.replies.push({
-      content: content,
-      author: currentAdmin.username,
-      date: new Date().toISOString().split('T')[0]
+  try {
+    const postsSnapshot = await getDocs(collection(db, 'posts'));
+    const userPosts = [];
+    postsSnapshot.forEach((doc) => {
+      const post = doc.data();
+      if (post.authorId === currentUser.uid) {
+        userPosts.push({ id: doc.id, ...post });
+      }
     });
-    
-    await saveData('posts', posts);
-    await renderAdminForum();
-    await renderUserPosts();
-    await renderAllPosts();
-    closeModal('replyPostModal');
-    showAlert('Inviata!', 'success');
-  }
-}
 
-async function deleteAdminPost(postId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  if (!confirm('Eliminare?')) return;
-  
-  const posts = await loadData('posts', []);
-  const updated = posts.filter(p => p.id !== postId);
-  await saveData('posts', updated);
-  await renderAdminForum();
-  showAlert('Eliminato!', 'success');
-}
+    if (userPosts.length === 0) {
+      userPostsList.innerHTML = '<p style="color: #8899aa;">Non hai ancora pubblicato nessun post.</p>';
+      return;
+    }
 
-/* ADMIN STAFF */
-async function renderStaffList() {
-  const list = document.getElementById('staffList');
-  if (!list) return;
-  
-  if (!isOwner()) {
-    list.innerHTML = '<p style="color: #8899aa;">Solo owner.</p>';
-    return;
-  }
-  
-  const staff = await loadData('staff', []);
-  const roles = await loadData('roles', []);
-  const search = document.getElementById('adminSearchStaff')?.value.toLowerCase() || '';
-  
-  let filtered = staff;
-  if (search) {
-    filtered = staff.filter(s => s.username.toLowerCase().includes(search));
-  }
-  
-  if (filtered.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessuno staff.</p>';
-    return;
-  }
-  
-  list.innerHTML = filtered.map(m => {
-    const role = roles.find(r => r.id === m.role);
-    return `
-      <div class="list-item">
-        <h4>${escapeHtml(m.username)}</h4>
-        <div class="list-item-meta">Username: ${escapeHtml(m.username)}</div>
-        <div class="list-item-meta">Password: ${escapeHtml(m.password)}</div>
-        <div class="list-item-meta">Ruolo: <span class="role-badge role-${m.role}">${role ? role.name : m.role}</span></div>
-        <div class="list-item-actions">
-          <button class="btn btn-danger" onclick="deleteStaff('${m.id}')">🗑️ Elimina</button>
+    userPostsList.innerHTML = userPosts.map(post => `
+      <div class="post">
+        <h4>${post.title}</h4>
+        <p>${post.content}</p>
+        <div class="post-meta">Data: ${post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+        ${post.replies && post.replies.length > 0 ? `
+          <div class="post-replies">
+            <strong>Risposte (${post.replies.length}):</strong>
+            ${post.replies.map(reply => `
+              <div class="reply">
+                <p>${reply.content}</p>
+                <div class="reply-meta">Da: ${reply.authorName} | ${reply.createdAt ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="post-actions">
+          <button class="btn btn-warning" onclick="editUserPost('${post.id}')">✏️ Modifica</button>
+          <button class="btn btn-danger" onclick="deleteUserPost('${post.id}')">🗑️ Elimina</button>
         </div>
       </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading user posts:', error);
+  }
+}
+
+window.createPost = async function() {
+  if (!currentUser) {
+    showAlert('Devi essere loggato per creare un post!', 'error');
+    return;
+  }
+
+  const title = document.getElementById('postTitle').value.trim();
+  const content = document.getElementById('postContent').value.trim();
+
+  if (!title || !content) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, 'posts'), {
+      title: title,
+      content: content,
+      authorId: currentUser.uid,
+      authorName: currentUserData.username,
+      createdAt: serverTimestamp(),
+      replies: []
+    });
+
+    showAlert('Post pubblicato con successo!', 'success');
+    document.getElementById('postTitle').value = '';
+    document.getElementById('postContent').value = '';
+  } catch (error) {
+    console.error('Error creating post:', error);
+    showAlert('Errore durante la pubblicazione del post', 'error');
+  }
+};
+
+window.editUserPost = async function(postId) {
+  try {
+    const postDoc = await getDoc(doc(db, 'posts', postId));
+    if (!postDoc.exists()) return;
+
+    const post = postDoc.data();
+    
+    if (post.authorId !== currentUser.uid) {
+      showAlert('Non puoi modificare questo post!', 'error');
+      return;
+    }
+
+    editingId = postId;
+    document.getElementById('editPostTitle').value = post.title;
+    document.getElementById('editPostContent').value = post.content;
+    openModal('editPostModal');
+  } catch (error) {
+    console.error('Error loading post:', error);
+  }
+};
+
+window.deleteUserPost = async function(postId) {
+  try {
+    const postDoc = await getDoc(doc(db, 'posts', postId));
+    if (!postDoc.exists()) return;
+
+    const post = postDoc.data();
+    
+    if (post.authorId !== currentUser.uid) {
+      showAlert('Non puoi eliminare questo post!', 'error');
+      return;
+    }
+
+    if (!confirm('Sei sicuro di voler eliminare questo post?')) return;
+
+    await deleteDoc(doc(db, 'posts', postId));
+    showAlert('Post eliminato con successo!', 'success');
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    showAlert('Errore durante l\'eliminazione del post', 'error');
+  }
+};
+
+window.saveEditPost = async function() {
+  const title = document.getElementById('editPostTitle').value.trim();
+  const content = document.getElementById('editPostContent').value.trim();
+
+  if (!title || !content) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, 'posts', editingId), {
+      title: title,
+      content: content
+    });
+
+    showAlert('Post modificato con successo!', 'success');
+    closeModal('editPostModal');
+  } catch (error) {
+    console.error('Error updating post:', error);
+    showAlert('Errore durante la modifica del post', 'error');
+  }
+};
+
+/* ========================================
+   ADMIN POSTS MANAGEMENT
+   ======================================== */
+
+async function renderAdminPosts() {
+  const adminPostsList = document.getElementById('adminPostsList');
+  if (!adminPostsList) return;
+
+  if (!hasPermission('manageForum')) {
+    adminPostsList.innerHTML = '<p style="color: #ff3366;">Non hai i permessi per gestire il forum.</p>';
+    return;
+  }
+
+  try {
+    const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+    const postsSnapshot = await getDocs(postsQuery);
+    const posts = [];
+    postsSnapshot.forEach((doc) => {
+      posts.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (posts.length === 0) {
+      adminPostsList.innerHTML = '<p style="color: #8899aa;">Nessun post presente.</p>';
+      return;
+    }
+
+    adminPostsList.innerHTML = posts.map(post => `
+      <div class="post">
+        <h4>${post.title}</h4>
+        <p>${post.content}</p>
+        <div class="post-meta">Autore: ${post.authorName} | Data: ${post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+        ${post.replies && post.replies.length > 0 ? `
+          <div class="post-replies">
+            <strong>Risposte (${post.replies.length}):</strong>
+            ${post.replies.map(reply => `
+              <div class="reply">
+                <p>${reply.content}</p>
+                <div class="reply-meta">Da: ${reply.authorName} | ${reply.createdAt ? new Date(reply.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="post-actions">
+          <button class="btn btn-success" onclick="replyToPost('${post.id}')">💬 Rispondi</button>
+          <button class="btn btn-danger" onclick="deleteAdminPost('${post.id}')">🗑️ Elimina</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading posts:', error);
+  }
+}
+
+window.replyToPost = async function(postId) {
+  if (!hasPermission('manageForum')) {
+    showAlert('Non hai i permessi per rispondere ai post!', 'error');
+    return;
+  }
+
+  try {
+    const postDoc = await getDoc(doc(db, 'posts', postId));
+    if (!postDoc.exists()) return;
+
+    const post = postDoc.data();
+    editingId = postId;
+
+    document.getElementById('replyPostPreview').innerHTML = `
+      <h4>${post.title}</h4>
+      <p>${post.content}</p>
+      <div class="reply-meta">Da: ${post.authorName} | ${post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}</div>
     `;
-  }).join('');
-}
+    document.getElementById('replyContent').value = '';
+    openModal('replyPostModal');
+  } catch (error) {
+    console.error('Error loading post:', error);
+  }
+};
 
-async function addStaff() {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
+window.saveReply = async function() {
+  const content = document.getElementById('replyContent').value.trim();
 
-  const username = document.getElementById('staffUsername').value.trim();
-  const password = document.getElementById('staffPassword').value.trim();
-  const role = document.getElementById('staffRole').value;
-  
-  if (!username || !password || !role) return showAlert('Compila tutto!', 'error');
-  if (username.length < 3 || password.length < 4) return showAlert('Username min 3, Password min 4!', 'error');
-  
-  const staff = await loadData('staff', []);
-  
-  if (staff.find(s => s.username === username)) return showAlert('Username esistente!', 'error');
-  
-  staff.push({
-    id: 'staff_' + Date.now(),
-    username: username,
-    password: password,
-    role: role,
-    created: new Date().toISOString().split('T')[0]
-  });
-  
-  await saveData('staff', staff);
-  
-  document.getElementById('staffUsername').value = '';
-  document.getElementById('staffPassword').value = '';
-  
-  await renderStaffList();
-  showAlert('Aggiunto!', 'success');
-}
+  if (!content) {
+    showAlert('Scrivi una risposta!', 'error');
+    return;
+  }
 
-async function deleteStaff(staffId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  if (!confirm('Eliminare?')) return;
-  
-  const staff = await loadData('staff', []);
-  const updated = staff.filter(s => s.id !== staffId);
-  await saveData('staff', updated);
-  await renderStaffList();
-  showAlert('Eliminato!', 'success');
-}
+  try {
+    const postDoc = await getDoc(doc(db, 'posts', editingId));
+    if (!postDoc.exists()) return;
 
-/* ADMIN STORE */
+    const post = postDoc.data();
+    const replies = post.replies || [];
+    
+    replies.push({
+      content: content,
+      authorName: currentUserData.username,
+      createdAt: serverTimestamp()
+    });
+
+    await updateDoc(doc(db, 'posts', editingId), {
+      replies: replies
+    });
+
+    showAlert('Risposta inviata con successo!', 'success');
+    closeModal('replyPostModal');
+  } catch (error) {
+    console.error('Error saving reply:', error);
+    showAlert('Errore durante l\'invio della risposta', 'error');
+  }
+};
+
+window.deleteAdminPost = async function(postId) {
+  if (!hasPermission('manageForum')) {
+    showAlert('Non hai i permessi per eliminare i post!', 'error');
+    return;
+  }
+
+  if (!confirm('Sei sicuro di voler eliminare questo post?')) return;
+
+  try {
+    await deleteDoc(doc(db, 'posts', postId));
+    showAlert('Post eliminato con successo!', 'success');
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    showAlert('Errore durante l\'eliminazione del post', 'error');
+  }
+};
+
+/* ========================================
+   PRODUCTS MANAGEMENT
+   ======================================== */
+
 async function renderStore() {
-  const grid = document.getElementById('storeGrid');
-  if (!grid) return;
-  
-  const products = await loadData('products', []);
-  
-  grid.innerHTML = products.map(p => `
-    <div class="store-card ${p.featured ? 'featured' : ''}">
-      ${p.featured ? '<div class="badge">Consigliato</div>' : ''}
-      <h4>${escapeHtml(p.name)}</h4>
-      <ul>${p.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
-      <div class="price">€${p.price.toFixed(2)}</div>
-      <button class="btn btn-primary">🛒 Acquista</button>
-    </div>
-  `).join('');
-}
+  const storeGrid = document.getElementById('storeGrid');
+  if (!storeGrid) return;
 
-async function renderAdminStore() {
-  const list = document.getElementById('adminStoreList');
-  if (!list) return;
-  
-  if (!isOwner()) {
-    list.innerHTML = '<p style="color: #8899aa;">Solo owner.</p>';
-    return;
-  }
-  
-  const products = await loadData('products', []);
-  const search = document.getElementById('adminSearchStore')?.value.toLowerCase() || '';
-  
-  let filtered = products;
-  if (search) {
-    filtered = products.filter(p => p.name.toLowerCase().includes(search));
-  }
-  
-  if (filtered.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessun prodotto.</p>';
-    return;
-  }
-  
-  list.innerHTML = filtered.map(p => `
-    <div class="list-item">
-      <h4>${escapeHtml(p.name)} ${p.featured ? '⭐' : ''}</h4>
-      <div class="list-item-meta">€${p.price.toFixed(2)}</div>
-      <div class="list-item-meta">Features:</div>
-      <ul style="margin-left: 20px;">${p.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>
-      <div class="list-item-actions">
-        <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">🗑️ Elimina</button>
+  try {
+    const productsSnapshot = await getDocs(collection(db, 'products'));
+    const products = [];
+    productsSnapshot.forEach((doc) => {
+      products.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (products.length === 0) {
+      storeGrid.innerHTML = '<p style="color: #8899aa;">Nessun prodotto disponibile.</p>';
+      return;
+    }
+
+    storeGrid.innerHTML = products.map(product => `
+      <div class="store-card ${product.featured ? 'featured' : ''}">
+        ${product.featured ? '<div class="badge">Consigliato</div>' : ''}
+        <h4>${product.name}</h4>
+        <ul>
+          ${product.features.map(f => `<li>${f}</li>`).join('')}
+        </ul>
+        <div class="price">€${product.price.toFixed(2)}</div>
+        <button class="btn btn-primary">🛒 Acquista</button>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  } catch (error) {
+    console.error('Error loading products:', error);
+  }
 }
 
-async function addProduct() {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  
+async function renderProductsList() {
+  const productsList = document.getElementById('productsList');
+  if (!productsList) return;
+
+  if (!hasPermission('manageStore')) {
+    productsList.innerHTML = '<p style="color: #ff3366;">Non hai i permessi per gestire lo store.</p>';
+    return;
+  }
+
+  try {
+    const productsSnapshot = await getDocs(collection(db, 'products'));
+    const products = [];
+    productsSnapshot.forEach((doc) => {
+      products.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (products.length === 0) {
+      productsList.innerHTML = '<p style="color: #8899aa;">Nessun prodotto presente.</p>';
+      return;
+    }
+
+    productsList.innerHTML = products.map(product => `
+      <div class="list-item">
+        <h4>${product.name} ${product.featured ? '⭐' : ''}</h4>
+        <div class="list-item-meta">Prezzo: €${product.price.toFixed(2)}</div>
+        <div class="list-item-meta">Features:</div>
+        <ul style="margin-left: 20px; margin-top: 5px;">
+          ${product.features.map(f => `<li>${f}</li>`).join('')}
+        </ul>
+        <div class="list-item-actions">
+          <button class="btn btn-warning" onclick="editProduct('${product.id}')">✏️ Modifica</button>
+          <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">🗑️ Elimina</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading products:', error);
+  }
+}
+
+window.addProduct = async function() {
+  if (!hasPermission('manageStore')) {
+    showAlert('Non hai i permessi per gestire lo store!', 'error');
+    return;
+  }
+
   const name = document.getElementById('productName').value.trim();
   const price = parseFloat(document.getElementById('productPrice').value);
   const featuresText = document.getElementById('productFeatures').value.trim();
   const featured = document.getElementById('productFeatured').checked;
-  
-  if (!name || !price || !featuresText) return showAlert('Compila tutto!', 'error');
-  if (price <= 0) return showAlert('Prezzo > 0!', 'error');
-  
+
+  if (!name || !price || !featuresText) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
   const features = featuresText.split('\n').filter(f => f.trim());
-  if (features.length === 0) return showAlert('Almeno 1 feature!', 'error');
 
-  const products = await loadData('products', []);
-  
-  products.push({
-    id: 'prod_' + Date.now(),
-    name: name,
-    price: price,
-    features: features,
-    featured: featured
-  });
-  
-  await saveData('products', products);
-  
-  document.getElementById('productName').value = '';
-  document.getElementById('productPrice').value = '';
-  document.getElementById('productFeatures').value = '';
-  document.getElementById('productFeatured').checked = false;
-  
-  await renderAdminStore();
-  await renderStore();
-  showAlert('Aggiunto!', 'success');
-}
-
-async function deleteProduct(productId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  if (!confirm('Eliminare?')) return;
-  
-  const products = await loadData('products', []);
-  const updated = products.filter(p => p.id !== productId);
-  await saveData('products', updated);
-  await renderAdminStore();
-  await renderStore();
-  showAlert('Eliminato!', 'success');
-}
-
-/* ADMIN DATABASE */
-async function renderDatabase() {
-  const list = document.getElementById('databaseList');
-  if (!list) return;
-  
-  if (!isOwner()) {
-    list.innerHTML = '<p style="color: #8899aa;">Solo owner.</p>';
-    return;
-  }
-  
-  const users = await loadData('users', []);
-  const roles = await loadData('roles', []);
-  const search = document.getElementById('adminSearchDatabase')?.value.toLowerCase() || '';
-  
-  let filtered = users;
-  if (search) {
-    filtered = users.filter(u => u.username.toLowerCase().includes(search));
-  }
-  
-  if (filtered.length === 0) {
-    list.innerHTML = '<p style="color: #8899aa;">Nessun utente.</p>';
-    return;
-  }
-  
-  list.innerHTML = filtered.map(u => {
-    const role = roles.find(r => r.id === u.role);
-    return `
-      <div class="list-item">
-        <h4>${escapeHtml(u.username)}</h4>
-        <div class="list-item-meta">Username: ${escapeHtml(u.username)}</div>
-        <div class="list-item-meta">Password: ${escapeHtml(u.password)}</div>
-        <div class="list-item-meta">Ruolo: <span class="role-badge role-${u.role}">${role ? role.name : u.role}</span></div>
-        <div class="list-item-meta">Registrato: ${u.created}</div>
-        <div class="list-item-actions">
-          <button class="btn btn-warning" onclick="changeUserRole('${u.id}')">🔄 Cambia Ruolo</button>
-          <button class="btn btn-danger" onclick="deleteUser('${u.id}')">🗑️ Elimina</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function changeUserRole(userId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  
-  const users = await loadData('users', []);
-  const user = users.find(u => u.id === userId);
-  if (!user) return;
-  
-  const roles = await loadData('roles', []);
-  const roleId = prompt(`Nuovo ruolo per ${user.username}:\n${roles.map(r => `- ${r.id}`).join('\n')}`);
-  
-  if (roleId && roles.find(r => r.id === roleId)) {
-    user.role = roleId;
-    await saveData('users', users);
-    await renderDatabase();
-    showAlert('Ruolo cambiato!', 'success');
-  } else if (roleId) {
-    showAlert('Ruolo non valido!', 'error');
-  }
-}
-
-async function deleteUser(userId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  if (!confirm('Eliminare utente?')) return;
-  
-  const users = await loadData('users', []);
-  const updated = users.filter(u => u.id !== userId);
-  await saveData('users', updated);
-  await renderDatabase();
-  showAlert('Eliminato!', 'success');
-}
-
-/* ADMIN RUOLI */
-async function renderRolesList() {
-  const list = document.getElementById('rolesList');
-  if (!list) return;
-  
-  if (!isOwner()) {
-    list.innerHTML = '<p style="color: #8899aa;">Solo owner.</p>';
-    return;
-  }
-  
-  const roles = await loadData('roles', []);
-  
-  list.innerHTML = roles.map(r => `
-    <div class="list-item">
-      <h4><span class="role-badge role-${r.id}">${r.name}</span></h4>
-      <div class="list-item-meta">ID: ${r.id}</div>
-      <div class="list-item-meta">Permessi: ${r.permissions.join(', ')}</div>
-      <div class="list-item-actions">
-        <button class="btn btn-warning" onclick="editRole('${r.id}')">✏️ Modifica</button>
-        ${r.id !== 'owner' && r.id !== 'utente' ? `<button class="btn btn-danger" onclick="deleteRole('${r.id}')">🗑️ Elimina</button>` : ''}
-      </div>
-    </div>
-  `).join('');
-}
-
-async function addRole() {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  
-  const name = document.getElementById('roleName').value.trim();
-  const id = document.getElementById('roleId').value.trim();
-  const perms = document.getElementById('rolePermissions').value.trim();
-  
-  if (!name || !id || !perms) return showAlert('Compila tutto!', 'error');
-  
-  const roles = await loadData('roles', []);
-  
-  if (roles.find(r => r.id === id)) return showAlert('ID esistente!', 'error');
-  
-  roles.push({
-    id: id,
-    name: name,
-    permissions: perms.split(',').map(p => p.trim()).filter(p => p)
-  });
-  
-  await saveData('roles', roles);
-  
-  document.getElementById('roleName').value = '';
-  document.getElementById('roleId').value = '';
-  document.getElementById('rolePermissions').value = '';
-  
-  await renderRolesList();
-  populateRoleSelects();
-  showAlert('Ruolo creato!', 'success');
-}
-
-async function editRole(roleId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  
-  const roles = await loadData('roles', []);
-  const role = roles.find(r => r.id === roleId);
-  if (!role) return;
-  
-  const perms = prompt(`Permessi per ${role.name} (separati da virgola):`, role.permissions.join(', '));
-  
-  if (perms !== null) {
-    role.permissions = perms.split(',').map(p => p.trim()).filter(p => p);
-    await saveData('roles', roles);
-    await renderRolesList();
-    showAlert('Ruolo modificato!', 'success');
-  }
-}
-
-async function deleteRole(roleId) {
-  if (!isOwner()) return showAlert('Solo owner!', 'error');
-  if (roleId === 'owner' || roleId === 'utente') return showAlert('Non puoi eliminare questo!', 'error');
-  if (!confirm('Eliminare ruolo?')) return;
-  
-  const roles = await loadData('roles', []);
-  const updated = roles.filter(r => r.id !== roleId);
-  await saveData('roles', updated);
-  await renderRolesList();
-  populateRoleSelects();
-  showAlert('Eliminato!', 'success');
-}
-
-async function populateRoleSelects() {
-  const roles = await loadData('roles', []);
-  const staffRole = document.getElementById('staffRole');
-  
-  if (staffRole) {
-    staffRole.innerHTML = roles.filter(r => r.id !== 'owner' && r.id !== 'utente').map(r => 
-      `<option value="${r.id}">${r.name}</option>`
-    ).join('');
-  }
-}
-
-/* UTILITIES */
-function showAlert(msg, type = 'success') {
-  const alert = document.getElementById('alert');
-  alert.textContent = msg;
-  alert.className = `alert alert-${type} active`;
-  setTimeout(() => alert.classList.remove('active'), 3000);
-}
-
-function copyIP() {
-  navigator.clipboard.writeText("play.luminosmc.it");
-  showAlert("IP copiato!", 'success');
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.add('active');
-}
-
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) modal.classList.remove('active');
-  editingId = null;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.modal-overlay').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-      if (e.target === this) closeModal(this.id);
+  try {
+    await addDoc(collection(db, 'products'), {
+      name: name,
+      price: price,
+      features: features,
+      featured: featured
     });
-  });
-});
+
+    showAlert('Prodotto aggiunto con successo!', 'success');
+    
+    document.getElementById('productName').value = '';
+    document.getElementById('productPrice').value = '';
+    document.getElementById('productFeatures').value = '';
+    document.getElementById('productFeatured').checked = false;
+  } catch (error) {
+    console.error('Error adding product:', error);
+    showAlert('Errore durante l\'aggiunta del prodotto', 'error');
+  }
+};
+
+window.editProduct = async function(productId) {
+  if (!hasPermission('manageStore')) {
+    showAlert('Non hai i permessi per gestire lo store!', 'error');
+    return;
+  }
+
+  try {
+    const productDoc = await getDoc(doc(db, 'products', productId));
+    if (!productDoc.exists()) return;
+
+    const product = productDoc.data();
+    editingId = productId;
+
+    document.getElementById('editProductName').value = product.name;
+    document.getElementById('editProductPrice').value = product.price;
+    document.getElementById('editProductFeatures').value = product.features.join('\n');
+    document.getElementById('editProductFeatured').checked = product.featured;
+
+    openModal('editProductModal');
+  } catch (error) {
+    console.error('Error loading product:', error);
+  }
+};
+
+window.saveEditProduct = async function() {
+  const name = document.getElementById('editProductName').value.trim();
+  const price = parseFloat(document.getElementById('editProductPrice').value);
+  const featuresText = document.getElementById('editProductFeatures').value.trim();
+  const featured = document.getElementById('editProductFeatured').checked;
+
+  if (!name || !price || !featuresText) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+
+  const features = featuresText.split('\n').filter(f => f.trim());
+
+  try {
+    await updateDoc(doc(db, 'products', editingId), {
+      name: name,
+      price: price,
+      features: features,
+      featured: featured
+    });
+
+    showAlert('Prodotto modificato con successo!', 'success');
+    closeModal('editProductModal');
+  } catch (error) {
+    console.error('Error updating product:', error);
+    showAlert('Errore durante la modifica del prodotto', 'error');
+  }
+};
+
+window.deleteProduct = async function(productId) {
+  if (!hasPermission('manageStore')) {
+    showAlert('Non hai i permessi per gestire lo store!', 'error');
+    return;
+  }
+
+  if (!confirm('Sei sicuro di voler eliminare questo prodotto?')) return;
+
+  try {
+    await deleteDoc(doc(db, 'products', productId));
+    showAlert('Prodotto eliminato con successo!', 'success');
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    showAlert('Errore durante l\'eliminazione del prodotto', 'error');
+  }
+};
+
+/* ========================================
+   STATS
+   ======================================== */
+
+async function updateStats() {
+  try {
+    const postsSnapshot = await getDocs(collection(db, 'posts'));
+    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const productsSnapshot = await getDocs(collection(db, 'products'));
+
+    const totalPostsEl = document.getElementById('totalPosts');
+    const totalUsersEl = document.getElementById('totalUsers');
+    const totalProductsEl = document.getElementById('totalProducts');
+
+    if (totalPostsEl) totalPostsEl.textContent = postsSnapshot.size;
+    if (totalUsersEl) totalUsersEl.textContent = usersSnapshot.size;
+    if (totalProductsEl) totalProductsEl.textContent = productsSnapshot.size;
+  } catch (error) {
+    console.error('Error updating stats:', error);
+  }
+}
+
+/* ========================================
+   UTILITY FUNCTIONS
+   ======================================== */
+
+window.copyIP = function() {
+  navigator.clipboard.writeText('play.luminosmc.it');
+  showAlert('IP copiato negli appunti!', 'success');
+};
+
+window.showAlert = function(message, type = 'success') {
+  const alert = document.getElementById('alert');
+  alert.textContent = message;
+  alert.className = `alert alert-${type} active`;
+  setTimeout(() => alert.classList.remove('active'), 4000);
+};
+
+window.openModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.add('active');
+  }
+};
+
+window.closeModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  editingId = null;
+  editingUserId = null;
+};
