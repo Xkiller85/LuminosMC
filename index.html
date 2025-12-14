@@ -4,20 +4,22 @@
   <meta charset="UTF-8">
   <title>Luminos MC</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Collega il CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- HEADER -->
+  <!-- Alert -->
+  <div id="alert" class="alert"></div>
+
+  <!-- Header -->
   <header class="header">
     <div class="header-content">
-      <div class="logo" onclick="showPage('home')">Luminos MC</div>
-      <nav class="nav">
-        <button class="nav-btn" data-page="home" onclick="showPage('home')">Home</button>
-        <button class="nav-btn" data-page="store" onclick="showPage('store')">Store</button>
-        <button class="nav-btn" data-page="forum" onclick="showPage('forum')">Forum</button>
-        <button class="nav-btn" data-page="login" onclick="showPage('login')">Login</button>
-        <button class="nav-btn" data-page="admin" onclick="showPage('admin')">Admin</button>
+      <div class="logo" id="logoBtn">✨ Luminos MC</div>
+      <nav class="nav" id="mainNav">
+        <button class="nav-btn active" data-page="home">Home</button>
+        <button class="nav-btn" data-page="store">Store</button>
+        <button class="nav-btn" data-page="forum">Forum</button>
+        <button class="nav-btn" id="loginNavBtn" data-page="login">Login</button>
+        <button class="nav-btn" id="adminNavBtn" style="display:none;" data-page="admin">Admin</button>
       </nav>
       <div id="userInfo" class="user-info"></div>
     </div>
@@ -27,66 +29,81 @@
     <!-- HOME -->
     <section id="home" class="page active">
       <div class="hero">
-        <h2>Benvenuto su Luminos MC</h2>
-        <p>Server IP: <strong>play.luminosmc.it</strong></p>
+        <h1 class="hero-title">Benvenuto su Luminos MC</h1>
+        <p class="hero-text">Server IP: <strong class="server-ip">play.luminosmc.it</strong></p>
+        <p class="hero-subtext">Unisciti alla nostra community e scopri un'esperienza di gioco unica!</p>
+      </div>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🎮</div>
+          <h3 class="feature-title">Modalità Uniche</h3>
+          <p class="feature-text">Survival, Skyblock, PvP e molto altro</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👥</div>
+          <h3 class="feature-title">Community Attiva</h3>
+          <p class="feature-text">Oltre 1000 giocatori online</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3 class="feature-title">Staff Professionale</h3>
+          <p class="feature-text">Supporto 24/7 per ogni necessità</p>
+        </div>
       </div>
     </section>
 
     <!-- STORE -->
     <section id="store" class="page">
-      <h2>Store</h2>
+      <h2 class="page-title">🛒 Store VIP</h2>
+      <p class="page-subtitle">Acquista i nostri pacchetti VIP e ottieni vantaggi esclusivi!</p>
       <div id="storeGrid" class="store-grid"></div>
     </section>
 
     <!-- FORUM -->
     <section id="forum" class="page">
-      <h2>Forum</h2>
-      <div id="forumCreatePost" class="card" style="display:none;">
-        <h3>Crea un nuovo post</h3>
-        <div class="form-group">
-          <label for="postNickname">Nickname</label>
-          <input id="postNickname">
-        </div>
-        <div class="form-group">
-          <label for="postTitle">Titolo</label>
-          <input id="postTitle">
-        </div>
-        <div class="form-group">
-          <label for="postDescription">Descrizione</label>
-          <textarea id="postDescription"></textarea>
-        </div>
-        <button class="btn btn-success" onclick="createPost()">Pubblica</button>
-      </div>
-
+      <h2 class="page-title">💬 Forum</h2>
       <div class="card">
-        <h3>I tuoi post</h3>
-        <div id="userPostsCard" style="display:none;">
-          <div id="userPostsList"></div>
+        <h3 class="card-title">Crea un nuovo post</h3>
+        <div class="form-group">
+          <label>Nickname</label>
+          <input id="postNickname" placeholder="Il tuo nickname">
         </div>
+        <div class="form-group">
+          <label>Titolo</label>
+          <input id="postTitle" placeholder="Titolo del post">
+        </div>
+        <div class="form-group">
+          <label>Descrizione</label>
+          <textarea id="postDescription" placeholder="Scrivi qui..."></textarea>
+        </div>
+        <button class="btn btn-primary" id="createPostBtn">📝 Pubblica Post</button>
       </div>
-
+      
       <div class="card">
-        <h3>Tutti i post</h3>
-        <input id="searchPosts" placeholder="Cerca..." oninput="renderAllPosts()">
-        <div id="allPostsList"></div>
+        <h3 class="card-title">Tutti i post</h3>
+        <div id="forumPosts"></div>
       </div>
     </section>
 
     <!-- LOGIN -->
     <section id="login" class="page login-container">
       <div class="login-card card">
-        <h2 id="loginTitle">🔐 Login</h2>
-        <div class="form-group">
-          <label for="loginUsername">Username</label>
-          <input id="loginUsername">
-        </div>
-        <div class="form-group">
-          <label for="loginPassword">Password</label>
-          <input id="loginPassword" type="password">
-        </div>
-        <button id="loginBtn" class="btn btn-primary" onclick="handleLogin()">Accedi</button>
-        <p id="loginHint" class="hint">
-          Non hai un account? <a onclick="switchToRegister()">Registrati</a>
+        <h2 id="loginTitle" class="login-title">🔐 Login</h2>
+        <form id="authForm">
+          <div class="form-group">
+            <label>Username</label>
+            <input id="authUsername" name="username" placeholder="Il tuo username" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input id="authPassword" name="password" type="password" placeholder="La tua password" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Accedi</button>
+        </form>
+        <p class="hint">
+          <span id="hintText">Non hai un account?</span>
+          <span class="hint-link" id="toggleAuthBtn">Registrati</span>
         </p>
       </div>
     </section>
@@ -94,38 +111,37 @@
     <!-- ADMIN -->
     <section id="admin" class="page">
       <div id="adminLoginSection" class="card">
-        <h2>Login Admin</h2>
-        <div class="form-group">
-          <label for="adminUsername">Username</label>
-          <input id="adminUsername">
-        </div>
-        <div class="form-group">
-          <label for="adminPassword">Password</label>
-          <input id="adminPassword" type="password">
-        </div>
-        <button class="btn btn-primary" onclick="handleAdminLogin()">Accedi</button>
+        <h2 class="card-title">🔐 Accesso Admin</h2>
+        <p class="card-text">Effettua il login come utente con privilegi di amministratore</p>
+        <button class="btn btn-primary" id="adminLoginBtn">Accedi come Admin</button>
       </div>
 
       <div id="adminPanel" style="display:none;">
-        <div class="admin-tabs">
-          <button class="tab-btn" data-tab="store" onclick="showAdminTab('store')">Store</button>
-          <button class="tab-btn" data-tab="database" onclick="showAdminTab('database')">Database</button>
-          <button class="tab-btn" data-tab="roles" onclick="showAdminTab('roles')">Ruoli</button>
+        <div class="admin-tabs" id="adminTabs">
+          <button class="tab-btn active" data-tab="store">🛒 Store</button>
+          <button class="tab-btn" data-tab="database">👥 Database Utenti</button>
+          <button class="tab-btn" data-tab="roles">🎭 Ruoli</button>
         </div>
 
         <div id="admin-store" class="admin-tab active">
-          <h3>Gestione Store</h3>
-          <div id="adminStoreList"></div>
+          <div class="card">
+            <h3 class="card-title">Gestione Store</h3>
+            <div id="adminStoreList"></div>
+          </div>
         </div>
 
         <div id="admin-database" class="admin-tab">
-          <h3>Utenti</h3>
-          <div id="databaseList"></div>
+          <div class="card">
+            <h3 class="card-title">Database Utenti</h3>
+            <div id="databaseList"></div>
+          </div>
         </div>
 
         <div id="admin-roles" class="admin-tab">
-          <h3>Ruoli</h3>
-          <div id="rolesList"></div>
+          <div class="card">
+            <h3 class="card-title">Gestione Ruoli</h3>
+            <div id="rolesList"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -135,7 +151,6 @@
     <p>© 2025 Luminos MC - Tutti i diritti riservati</p>
   </footer>
 
-  <!-- SCRIPT -->
   <script type="module" src="script.js"></script>
 </body>
 </html>

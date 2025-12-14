@@ -1,6 +1,5 @@
 /* ========================================
-   LUMINOS MC - SISTEMA COMPLETO
-   Firebase Authentication + Realtime Database
+   LUMINOS MC - SCRIPT.JS
    ======================================== */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -12,11 +11,14 @@ import {
   getDatabase, ref, child, get, set, update, remove
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-/* CONFIG FIREBASE */
+/* ========================================
+   FIREBASE CONFIG
+   ======================================== */
+
 const firebaseConfig = {
   apiKey: "AIzaSyAp3juPC1YnzBbTWdK0qtGEdj8UcRwpjUA",
   authDomain: "luminosmc-4ee70.firebaseapp.com",
-  databaseURL: "https://luminosmc-4ee70-default-rtdb.europe-west1.firebasedatabase.app", // ✅ CORRETTO
+  databaseURL: "https://luminosmc-4ee70-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "luminosmc-4ee70",
   storageBucket: "luminosmc-4ee70.appspot.com",
   messagingSenderId: "125483937552",
@@ -28,419 +30,537 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-/* VARIABILI */
-let currentUser = null;
-let currentAdmin = null;
-let editingId = null;
-let isRegistering = false;
+/* ========================================
+   VARIABILI GLOBALI
+   ======================================== */
 
-/* HELPERS DB */
+let currentUser = null;
+let userData = null;
+let isRegistering = false;
+let adminMode = false;
+
+/* ========================================
+   DATABASE HELPERS
+   ======================================== */
+
 async function dbGet(path) {
   const snap = await get(child(ref(db), path));
   return snap.exists() ? snap.val() : null;
 }
-async function dbSet(path, value) { await set(ref(db, path), value); }
-async function dbUpdate(path, value) { await update(ref(db, path), value); }
-async function dbRemove(path) { await remove(ref(db, path)); }
 
-/* ALERT */
-function showAlert(msg, type = 'success') {
+async function dbSet(path, value) {
+  await set(ref(db, path), value);
+}
+
+async function dbUpdate(path, value) {
+  await update(ref(db, path), value);
+}
+
+async function dbRemove(path) {
+  await remove(ref(db, path));
+}
+
+/* ========================================
+   ALERT SYSTEM
+   ======================================== */
+
+function showAlert(message, type = 'success') {
   const alert = document.getElementById('alert');
   if (alert) {
-    alert.textContent = msg;
+    alert.textContent = message;
     alert.className = `alert alert-${type} active`;
     setTimeout(() => alert.classList.remove('active'), 3000);
-  } else {
-    console.log(`[${type}] ${msg}`);
   }
 }
 
-/* INIT */
-document.addEventListener('DOMContentLoaded', async function() {
-  await initSystem();
-  await renderStore();
-  populateRoleSelects();
-});
+/* ========================================
+   INIT SYSTEM
+   ======================================== */
 
-/* Inizializza ruoli e prodotti se vuoti */
 async function initSystem() {
+  // Inizializza ruoli
   const roles = await dbGet('roles') || {};
   if (Object.keys(roles).length === 0) {
     await dbUpdate('roles', {
       owner: { id: 'owner', name: 'Owner', permissions: ['all'] },
-      admin: { id: 'admin', name: 'Admin', permissions: ['manage_forum','manage_staff','manage_store','view_database'] },
+      admin: { id: 'admin', name: 'Admin', permissions: ['manage_forum', 'manage_staff', 'manage_store', 'view_database'] },
       moderator: { id: 'moderator', name: 'Moderatore', permissions: ['manage_forum'] },
       utente: { id: 'utente', name: 'Utente', permissions: [] }
     });
   }
+  
+  // Inizializza prodotti
   const products = await dbGet('products') || {};
   if (Object.keys(products).length === 0) {
     await dbUpdate('products', {
-      prod_1: { id: 'prod_1', name: "VIP Bronze", price: 4.99, features: ["Prefix dedicato","Kit giornaliero","Queue prioritaria"], featured: false },
-      prod_2: { id: 'prod_2', name: "VIP Silver", price: 9.99, features: ["Tutto di Bronze","Particles esclusive","/hat e /nick"], featured: false },
-      prod_3: { id: 'prod_3', name: "VIP Gold", price: 14.99, features: ["Tutto di Silver","Kit potenziato","Slot riservato"], featured: true }
+      prod_1: { 
+        id: 'prod_1', 
+        name: "VIP Bronze", 
+        price: 4.99, 
+        features: ["Prefix dedicato", "Kit giornaliero", "Queue prioritaria"], 
+        featured: false 
+      },
+      prod_2: { 
+        id: 'prod_2', 
+        name: "VIP Silver", 
+        price: 9.99, 
+        features: ["Tutto di Bronze", "Particles esclusive", "/hat e /nick"], 
+        featured: false 
+      },
+      prod_3: { 
+        id: 'prod_3', 
+        name: "VIP Gold", 
+        price: 14.99, 
+        features: ["Tutto di Silver", "Kit potenziato", "Slot riservato"], 
+        featured: true 
+      }
     });
   }
 }
 
-/* AUTH */
+/* ========================================
+   AUTH LISTENER
+   ======================================== */
+
 onAuthStateChanged(auth, async (user) => {
-  currentUser = user || null;
-  updateUserInfo();
+  currentUser = user;
+  
+  if (user) {
+    userData = await dbGet(`users/${user.uid}`);
+    updateUserInfo();
+    
+    // Mostra pulsante admin se utente ha permessi
+    const adminNavBtn = document.getElementById('adminNavBtn');
+    const loginNavBtn = document.getElementById('loginNavBtn');
+    if (adminNavBtn) adminNavBtn.style.display = 'block';
+    if (loginNavBtn) loginNavBtn.style.display = 'none';
+  } else {
+    userData = null;
+    adminMode = false;
+    updateUserInfo();
+    
+    // Nascondi pulsante admin
+    const adminNavBtn = document.getElementById('adminNavBtn');
+    const loginNavBtn = document.getElementById('loginNavBtn');
+    if (adminNavBtn) adminNavBtn.style.display = 'none';
+    if (loginNavBtn) loginNavBtn.style.display = 'block';
+  }
 });
 
-/* Registrazione */
-async function handleRegister() {
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
-  if (!username || !password) return showAlert('Compila tutti i campi!', 'error');
+/* ========================================
+   UPDATE USER INFO
+   ======================================== */
 
-  const cred = await createUserWithEmailAndPassword(auth, `${username}@luminosmc.com`, password);
-  const uid = cred.user.uid;
-  await dbSet(`users/${uid}`, {
-    id: uid,
-    username,
-    role: 'utente',
-    created: new Date().toISOString().split('T')[0]
-  });
-  showAlert('Registrato! Accedi ora.', 'success');
+function updateUserInfo() {
+  const userInfo = document.getElementById('userInfo');
+  if (!userInfo) return;
+  
+  if (!currentUser || !userData) {
+    userInfo.innerHTML = '';
+    return;
+  }
+  
+  const role = userData.role || 'utente';
+  userInfo.innerHTML = `
+    <span>👤 ${userData.username || currentUser.email.split('@')[0]}</span>
+    <span class="role-badge role-${role}">${role}</span>
+    <button class="btn-logout" id="logoutBtn">Esci</button>
+  `;
+  
+  // Add logout event listener
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
 }
 
-/* Login */
-async function handleLogin() {
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
+/* ========================================
+   AUTH FUNCTIONS
+   ======================================== */
+
+function toggleAuthMode() {
+  isRegistering = !isRegistering;
+  const title = document.getElementById('loginTitle');
+  const hintText = document.getElementById('hintText');
+  const form = document.getElementById('authForm');
+  
+  if (isRegistering) {
+    title.textContent = '📝 Registrazione';
+    hintText.textContent = 'Hai già un account?';
+    form.querySelector('button').textContent = 'Registrati';
+  } else {
+    title.textContent = '🔐 Login';
+    hintText.textContent = 'Non hai un account?';
+    form.querySelector('button').textContent = 'Accedi';
+  }
+}
+
+async function handleRegister(username, password) {
+  if (password.length < 6) {
+    showAlert('La password deve essere di almeno 6 caratteri!', 'error');
+    return;
+  }
+  
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, `${username}@luminosmc.com`, password);
+    await dbSet(`users/${cred.user.uid}`, {
+      id: cred.user.uid,
+      username,
+      role: 'utente',
+      created: new Date().toISOString().split('T')[0]
+    });
+    showAlert('Registrazione completata! Effettua il login.', 'success');
+    toggleAuthMode(); // Torna al login
+    // Reset form
+    document.getElementById('authForm').reset();
+  } catch (error) {
+    if (error.code === 'auth/email-already-in-use') {
+      showAlert('Username già in uso!', 'error');
+    } else {
+      showAlert('Errore durante la registrazione: ' + error.message, 'error');
+    }
+  }
+}
+
+async function handleLogin(username, password) {
   try {
     await signInWithEmailAndPassword(auth, `${username}@luminosmc.com`, password);
-    showAlert('Login OK!', 'success');
-    updateUserInfo();
+    showAlert('Login effettuato con successo!', 'success');
     showPage('home');
-  } catch (e) {
+    // Reset form
+    document.getElementById('authForm').reset();
+  } catch (error) {
     showAlert('Credenziali errate!', 'error');
   }
 }
 
-/* Logout */
-async function logout() {
+async function handleLogout() {
   await signOut(auth);
-  currentUser = null;
-  updateUserInfo();
+  adminMode = false;
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminLoginSection').style.display = 'block';
+  showAlert('Logout effettuato!', 'success');
   showPage('home');
-  showAlert('Logout!', 'success');
 }
 
-/* Aggiorna info utente */
-async function updateUserInfo() {
-  const userInfo = document.getElementById('userInfo');
+/* ========================================
+   ADMIN FUNCTIONS
+   ======================================== */
+
+async function handleAdminLogin() {
   if (!currentUser) {
-    if (userInfo) userInfo.innerHTML = '';
+    showAlert('Devi effettuare il login prima!', 'error');
     return;
   }
-  const udata = await dbGet(`users/${currentUser.uid}`);
-  const role = udata?.role || 'utente';
-  if (userInfo) {
-    userInfo.innerHTML = `
-      <span>👤 ${udata?.username || currentUser.email.split('@')[0]}</span>
-      <span class="role-badge role-${role}">${role}</span>
-      <button class="btn-logout btn" onclick="logout()">Esci</button>
-    `;
-  }
-}
-
-/* Admin login = basato su ruolo */
-async function handleAdminLogin() {
-  if (!currentUser) return showAlert('Devi fare login come utente!', 'error');
+  
   const udata = await dbGet(`users/${currentUser.uid}`);
   if (udata && (udata.role === 'admin' || udata.role === 'owner')) {
-    currentAdmin = { ...udata, isAdmin: true };
-    showAdminPanel();
-    showAlert(`Accesso ${udata.role}!`, 'success');
+    adminMode = true;
+    document.getElementById('adminLoginSection').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    showAlert(`Accesso ${udata.role} autorizzato!`, 'success');
+    await renderAdminContent();
   } else {
-    showAlert('Non sei admin!', 'error');
+    showAlert('Non hai i permessi di amministratore!', 'error');
   }
 }
 
-function showAdminPanel() {
-  document.getElementById('adminLoginSection').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'block';
+async function renderAdminContent() {
+  await renderAdminStore();
+  await renderDatabase();
+  await renderRolesList();
 }
 
-async function logoutAdmin() {
-  currentAdmin = null;
-  document.getElementById('adminLoginSection').style.display = 'block';
-  document.getElementById('adminPanel').style.display = 'none';
-  showAlert('Logout Admin!', 'success');
-}
-
-function isOwner() {
-  return currentAdmin && currentAdmin.role === 'owner';
-}
-
-/* Forum */
-async function createPost() {
-  if (!currentUser) return showAlert('Loggati!', 'error');
-  const nickname = document.getElementById('postNickname').value.trim();
-  const title = document.getElementById('postTitle').value.trim();
-  const description = document.getElementById('postDescription').value.trim();
-  if (!nickname || !title || !description) return showAlert('Compila tutto!', 'error');
-
-  const id = 'post_' + Date.now();
-  await dbSet(`posts/${id}`, {
-    id,
-    userId: currentUser.uid,
-    username: (await dbGet(`users/${currentUser.uid}`))?.username,
-    nickname,
-    title,
-    descriptions: [{ id: 'desc_' + Date.now(), content: description, date: new Date().toISOString().split('T')[0] }],
-    replies: [],
-    date: new Date().toISOString().split('T')[0]
+function showAdminTab(tabName) {
+  // Rimuovi active da tutti i tab
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  // Attiva il tab selezionato
+  const tab = document.getElementById(`admin-${tabName}`);
+  if (tab) tab.classList.add('active');
+  
+  // Attiva il button
+  const buttons = document.querySelectorAll('.tab-btn');
+  buttons.forEach(btn => {
+    if (btn.getAttribute('data-tab') === tabName) {
+      btn.classList.add('active');
+    }
   });
-  showAlert('Post pubblicato!', 'success');
 }
 
-/* Risposta admin */
-async function replyToPost(postId, content) {
-  const post = await dbGet(`posts/${postId}`);
-  if (!post) return;
-  const updatedReplies = [...(post.replies || []), {
-    content,
-    author: currentAdmin?.username || 'Admin',
-    date: new Date().toISOString().split('T')[0]
-  }];
-  await dbUpdate(`posts/${postId}`, { replies: updatedReplies });
-  showAlert('Risposta inviata!', 'success');
-}
-
-/* Staff */
-async function addStaff(username, role) {
-  const id = 'staff_' + Date.now();
-  await dbSet(`staff/${id}`, { id, username, role, created: new Date().toISOString().split('T')[0] });
-  showAlert('Staff aggiunto!', 'success');
-}
-async function deleteStaff(staffId) {
-  await dbRemove(`staff/${staffId}`);
-  showAlert('Staff eliminato!', 'success');
-}
-
-/* Prodotti */
-async function addProduct(name, price, features, featured) {
-  const id = 'prod_' + Date.now();
-  await dbSet(`products/${id}`, { id, name, price, features, featured });
-  showAlert('Prodotto aggiunto!', 'success');
-}
-async function deleteProduct(productId) {
-  await dbRemove(`products/${productId}`);
-  showAlert('Prodotto eliminato!', 'success');
-}
-
-/* Store */
-async function renderStore() {
-  const grid = document.getElementById('storeGrid');
-  if (!grid) return;
+// Render admin store
+async function renderAdminStore() {
+  const list = document.getElementById('adminStoreList');
+  if (!list) return;
+  
   const products = await dbGet('products') || {};
   const arr = Object.values(products);
-  grid.innerHTML = arr.map(p => `
-    <div class="store-card ${p.featured ? 'featured' : ''}">
-      ${p.featured ? '<div class="badge">Consigliato</div>' : ''}
-      <h4>${p.name}</h4>
-      <ul>${(p.features||[]).map(f => `<li>${f}</li>`).join('')}</ul>
-      <div class="price">€${Number(p.price).toFixed(2)}</div>
-      <button class="btn btn-primary">🛒 Acquista</button>
+  
+  list.innerHTML = arr.map(p => `
+    <div class="admin-item">
+      <h4 class="admin-item-title">${p.name}</h4>
+      <p class="admin-item-meta">Prezzo: €${p.price.toFixed(2)}</p>
+      <p class="admin-item-meta">Featured: ${p.featured ? 'Sì' : 'No'}</p>
+      <p class="admin-item-meta">Features: ${p.features.join(', ')}</p>
     </div>
   `).join('');
 }
 
-/* Database Utenti */
+// Render database utenti
 async function renderDatabase() {
   const list = document.getElementById('databaseList');
   if (!list) return;
+  
   const users = await dbGet('users') || {};
   const roles = await dbGet('roles') || {};
   const arr = Object.values(users);
+  
   list.innerHTML = arr.map(u => `
-    <div class="list-item">
-      <h4>${u.username}</h4>
-      <div class="list-item-meta">Ruolo: ${roles[u.role]?.name || u.role}</div>
-      <div class="list-item-meta">Registrato: ${u.created}</div>
-      <div class="list-item-actions">
-        <button class="btn btn-warning" onclick="changeUserRole('${u.id}')">🔄 Cambia Ruolo</button>
-        <button class="btn btn-danger" onclick="deleteUser('${u.id}')">🗑️ Elimina</button>
+    <div class="admin-item">
+      <h4 class="admin-item-title">${u.username}</h4>
+      <p class="admin-item-meta">Ruolo: ${roles[u.role]?.name || u.role}</p>
+      <p class="admin-item-meta">Registrato: ${u.created}</p>
+      <div class="admin-item-actions">
+        <button class="btn btn-warning" data-user-id="${u.id}" data-action="change-role">🔄 Cambia Ruolo</button>
+        <button class="btn btn-danger" data-user-id="${u.id}" data-action="delete">🗑️ Elimina</button>
       </div>
     </div>
   `).join('');
+  
+  // Add event listeners
+  list.querySelectorAll('[data-action="change-role"]').forEach(btn => {
+    btn.addEventListener('click', () => changeUserRole(btn.getAttribute('data-user-id')));
+  });
+  
+  list.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.addEventListener('click', () => deleteUser(btn.getAttribute('data-user-id')));
+  });
 }
 
 async function changeUserRole(userId) {
   const roles = await dbGet('roles') || {};
   const roleId = prompt(`Nuovo ruolo:\n${Object.keys(roles).join(', ')}`);
+  
   if (roleId && roles[roleId]) {
     await dbUpdate(`users/${userId}`, { role: roleId });
     await renderDatabase();
-    showAlert('Ruolo cambiato!', 'success');
+    showAlert('Ruolo cambiato con successo!', 'success');
+  } else if (roleId) {
+    showAlert('Ruolo non valido!', 'error');
   }
 }
 
 async function deleteUser(userId) {
-  await dbRemove(`users/${userId}`);
-  await renderDatabase();
-  showAlert('Utente eliminato!', 'success');
+  if (confirm('Sei sicuro di voler eliminare questo utente?')) {
+    await dbRemove(`users/${userId}`);
+    await renderDatabase();
+    showAlert('Utente eliminato!', 'success');
+  }
 }
 
-/* Ruoli */
+// Render ruoli
 async function renderRolesList() {
   const list = document.getElementById('rolesList');
   if (!list) return;
+  
   const roles = await dbGet('roles') || {};
+  
   list.innerHTML = Object.values(roles).map(r => `
-    <div class="list-item">
-      <h4>${r.name}</h4>
-      <div class="list-item-meta">ID: ${r.id}</div>
-      <div class="list-item-meta">Permessi: ${(r.permissions||[]).join(', ')}</div>
-      <div class="list-item-actions">
-        <button class="btn btn-warning" onclick="editRole('${r.id}')">✏️ Modifica</button>
-        ${r.id !== 'owner' && r.id !== 'utente' ? `<button class="btn btn-danger" onclick="deleteRole('${r.id}')">🗑️ Elimina</button>` : ''}
-      </div>
+    <div class="admin-item">
+      <h4 class="admin-item-title">${r.name}</h4>
+      <p class="admin-item-meta">ID: ${r.id}</p>
+      <p class="admin-item-meta">Permessi: ${(r.permissions || []).join(', ')}</p>
     </div>
   `).join('');
 }
 
-async function addRole(id, name, permissions) {
-  await dbUpdate(`roles`, { [id]: { id, name, permissions } });
-  await renderRolesList();
-  showAlert('Ruolo creato!', 'success');
+/* ========================================
+   STORE
+   ======================================== */
+
+async function renderStore() {
+  const grid = document.getElementById('storeGrid');
+  if (!grid) return;
+  
+  const products = await dbGet('products') || {};
+  const arr = Object.values(products);
+  
+  grid.innerHTML = arr.map(p => `
+    <div class="store-card ${p.featured ? 'featured' : ''}">
+      ${p.featured ? '<div class="badge">⭐ Consigliato</div>' : ''}
+      <h3>${p.name}</h3>
+      <div class="price">€${p.price.toFixed(2)}</div>
+      <ul>
+        ${(p.features || []).map(f => `<li>✓ ${f}</li>`).join('')}
+      </ul>
+      <button class="btn btn-primary">🛒 Acquista Ora</button>
+    </div>
+  `).join('');
 }
 
-function switchToRegister() {
-  const title = document.getElementById('loginTitle');
-  const btn = document.getElementById('loginBtn');
-  const hint = document.getElementById('loginHint');
+/* ========================================
+   FORUM
+   ======================================== */
 
-  if (!isRegistering) {
-    isRegistering = true;
-    if (title) title.textContent = "📝 Registrazione";
-    if (btn) {
-      btn.textContent = "Registrati";
-      btn.setAttribute("onclick", "handleRegister()");
-    }
-    if (hint) hint.innerHTML = 'Hai già un account? <a onclick="switchToRegister()">Accedi</a>';
-  } else {
-    isRegistering = false;
-    if (title) title.textContent = "🔐 Login";
-    if (btn) {
-      btn.textContent = "Accedi";
-      btn.setAttribute("onclick", "handleLogin()");
-    }
-    if (hint) hint.innerHTML = 'Non hai un account? <a onclick="switchToRegister()">Registrati</a>';
+async function createPost() {
+  if (!currentUser) {
+    showAlert('Devi effettuare il login!', 'error');
+    return;
   }
+  
+  const nickname = document.getElementById('postNickname').value.trim();
+  const title = document.getElementById('postTitle').value.trim();
+  const description = document.getElementById('postDescription').value.trim();
+  
+  if (!nickname || !title || !description) {
+    showAlert('Compila tutti i campi!', 'error');
+    return;
+  }
+  
+  const id = 'post_' + Date.now();
+  await dbSet(`posts/${id}`, {
+    id,
+    userId: currentUser.uid,
+    username: userData?.username || currentUser.email.split('@')[0],
+    nickname,
+    title,
+    description,
+    date: new Date().toISOString().split('T')[0]
+  });
+  
+  showAlert('Post pubblicato con successo!', 'success');
+  
+  // Reset form
+  document.getElementById('postNickname').value = '';
+  document.getElementById('postTitle').value = '';
+  document.getElementById('postDescription').value = '';
+  
+  await renderForumPosts();
 }
 
-// Gestione tab Admin
-function showAdminTab(tabName) {
-  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-  const tab = document.getElementById(`admin-${tabName}`);
-  if (tab) tab.classList.add('active');
-}
-
-// Forum - renderizza tutti i post
-async function renderAllPosts() {
-  const list = document.getElementById('allPostsList');
-  if (!list) return;
+async function renderForumPosts() {
+  const container = document.getElementById('forumPosts');
+  if (!container) return;
+  
   const posts = await dbGet('posts') || {};
-  const search = document.getElementById('searchPosts')?.value.toLowerCase() || "";
-  const arr = Object.values(posts).filter(p =>
-    p.title.toLowerCase().includes(search) ||
-    p.nickname.toLowerCase().includes(search)
-  );
-  list.innerHTML = arr.map(p => `
-    <div class="post-card">
-      <h4>${p.title}</h4>
-      <p><strong>${p.nickname}</strong> - ${p.date}</p>
-      <p>${p.descriptions[0]?.content || ""}</p>
+  const arr = Object.values(posts).sort((a, b) => b.id.localeCompare(a.id));
+  
+  if (arr.length === 0) {
+    container.innerHTML = '<p style="color: #8899aa; text-align: center; padding: 20px;">Nessun post ancora. Sii il primo a pubblicare!</p>';
+    return;
+  }
+  
+  container.innerHTML = arr.map(p => `
+    <div class="admin-item">
+      <h4 class="admin-item-title">${p.title}</h4>
+      <p class="admin-item-meta">Di: ${p.nickname} (@${p.username}) - ${p.date}</p>
+      <p style="color: #b0c4de; margin-top: 10px;">${p.description}</p>
     </div>
   `).join('');
 }
 
-async function editRole(roleId) {
-  const roles = await dbGet('roles') || {};
-  const role = roles[roleId];
-  if (!role) return;
-  const perms = prompt(`Permessi per ${role.name}:`, (role.permissions||[]).join(', '));
-  if (perms !== null) {
-    await dbUpdate(`roles/${roleId}`, { permissions: perms.split(',').map(p => p.trim()) });
-    await renderRolesList();
-    showAlert('Ruolo modificato!', 'success');
-  }
-}
+/* ========================================
+   NAVIGATION
+   ======================================== */
 
-async function deleteRole(roleId) {
-  if (roleId === 'owner' || roleId === 'utente') return showAlert('Non puoi eliminare questo ruolo!', 'error');
-  await dbRemove(`roles/${roleId}`);
-  await renderRolesList();
-  showAlert('Ruolo eliminato!', 'success');
-}
-
-async function populateRoleSelects() {
-  const roles = await dbGet('roles') || {};
-  const staffRole = document.getElementById('staffRole');
-  if (staffRole) {
-    staffRole.innerHTML = Object.values(roles)
-      .filter(r => r.id !== 'owner' && r.id !== 'utente')
-      .map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-  }
-}
-
-// Gestione tab Admin
-function showAdminTab(tabName) {
-  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-  const tab = document.getElementById(`admin-${tabName}`);
-  if (tab) tab.classList.add('active');
-}
-
-// Espone al window
-window.showAdminTab = showAdminTab;
-
-/* Navigation */
 function showPage(pageName) {
+  // Rimuovi active da tutte le pagine e nav buttons
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  
+  // Attiva la pagina selezionata
   const page = document.getElementById(pageName);
   if (page) page.classList.add('active');
-  if (pageName === 'store') renderStore();
-  if (pageName === 'admin' && currentAdmin) renderAdminContent();
+  
+  // Attiva il nav button corrispondente
+  const navButtons = document.querySelectorAll('.nav-btn');
+  navButtons.forEach(btn => {
+    if (btn.getAttribute('data-page') === pageName) {
+      btn.classList.add('active');
+    }
+  });
+  
+  // Carica contenuto specifico
+  if (pageName === 'store') {
+    renderStore();
+  } else if (pageName === 'forum') {
+    renderForumPosts();
+  }
 }
 
-async function renderAdminContent() {
+/* ========================================
+   EVENT LISTENERS
+   ======================================== */
+
+document.addEventListener('DOMContentLoaded', async function() {
+  await initSystem();
   await renderStore();
-  await renderDatabase();
-  await renderRolesList();
-}
-
-/* Espone funzioni al window */
-window.showPage = showPage;
-window.showAdminTab = showAdminTab;
-
-window.handleLogin = handleLogin;
-window.handleRegister = handleRegister;
-window.logout = logout;
-window.switchToRegister = switchToRegister;
-
-window.handleAdminLogin = handleAdminLogin;
-window.logoutAdmin = logoutAdmin;
-
-window.createPost = createPost;
-window.replyToPost = replyToPost;
-
-window.addStaff = addStaff;
-window.deleteStaff = deleteStaff;
-
-window.addProduct = addProduct;
-window.deleteProduct = deleteProduct;
-
-window.changeUserRole = changeUserRole;
-window.deleteUser = deleteUser;
-
-window.addRole = addRole;
-window.editRole = editRole;
-window.deleteRole = deleteRole;
-
-window.renderAllPosts = renderAllPosts; // se usi la ricerca forum
-
+  await renderForumPosts();
+  
+  // Logo click
+  const logoBtn = document.getElementById('logoBtn');
+  if (logoBtn) {
+    logoBtn.addEventListener('click', () => showPage('home'));
+  }
+  
+  // Navigation buttons
+  const navButtons = document.querySelectorAll('.nav-btn');
+  navButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = btn.getAttribute('data-page');
+      if (page) showPage(page);
+    });
+  });
+  
+  // Auth form
+  const authForm = document.getElementById('authForm');
+  if (authForm) {
+    authForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const username = document.getElementById('authUsername').value.trim();
+      const password = document.getElementById('authPassword').value;
+      
+      if (!username || !password) {
+        showAlert('Compila tutti i campi!', 'error');
+        return;
+      }
+      
+      if (isRegistering) {
+        await handleRegister(username, password);
+      } else {
+        await handleLogin(username, password);
+      }
+    });
+  }
+  
+  // Toggle auth mode
+  const toggleAuthBtn = document.getElementById('toggleAuthBtn');
+  if (toggleAuthBtn) {
+    toggleAuthBtn.addEventListener('click', toggleAuthMode);
+  }
+  
+  // Admin login
+  const adminLoginBtn = document.getElementById('adminLoginBtn');
+  if (adminLoginBtn) {
+    adminLoginBtn.addEventListener('click', handleAdminLogin);
+  }
+  
+  // Create post
+  const createPostBtn = document.getElementById('createPostBtn');
+  if (createPostBtn) {
+    createPostBtn.addEventListener('click', createPost);
+  }
+  
+  // Admin tabs
+  const adminTabs = document.getElementById('adminTabs');
+  if (adminTabs) {
+    adminTabs.addEventListener('click', (e) => {
+      if (e.target.classList.contains('tab-btn')) {
+        const tabName = e.target.getAttribute('data-tab');
+        if (tabName) showAdminTab(tabName);
+      }
+    });
+  }
+});
