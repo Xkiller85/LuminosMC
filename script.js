@@ -16,8 +16,9 @@ import {
 const firebaseConfig = {
   apiKey: "AIzaSyAp3juPC1YnzBbTWdK0qtGEdj8UcRwpjUA",
   authDomain: "luminosmc-4ee70.firebaseapp.com",
+  databaseURL: "https://luminosmc-4ee70-default-rtdb.europe-west1.firebasedatabase.app", // ✅ CORRETTO
   projectId: "luminosmc-4ee70",
-  storageBucket: "luminosmc-4ee70.firebasestorage.app",
+  storageBucket: "luminosmc-4ee70.appspot.com",
   messagingSenderId: "125483937552",
   appId: "1:125483937552:web:ea9264b2da064b7ed3ff95",
   measurementId: "G-0Q8THWCHXY"
@@ -309,6 +310,56 @@ async function addRole(id, name, permissions) {
   showAlert('Ruolo creato!', 'success');
 }
 
+function switchToRegister() {
+  const title = document.getElementById('loginTitle');
+  const btn = document.getElementById('loginBtn');
+  const hint = document.getElementById('loginHint');
+
+  if (!isRegistering) {
+    isRegistering = true;
+    if (title) title.textContent = "📝 Registrazione";
+    if (btn) {
+      btn.textContent = "Registrati";
+      btn.setAttribute("onclick", "handleRegister()");
+    }
+    if (hint) hint.innerHTML = 'Hai già un account? <a onclick="switchToRegister()">Accedi</a>';
+  } else {
+    isRegistering = false;
+    if (title) title.textContent = "🔐 Login";
+    if (btn) {
+      btn.textContent = "Accedi";
+      btn.setAttribute("onclick", "handleLogin()");
+    }
+    if (hint) hint.innerHTML = 'Non hai un account? <a onclick="switchToRegister()">Registrati</a>';
+  }
+}
+
+// Gestione tab Admin
+function showAdminTab(tabName) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById(`admin-${tabName}`);
+  if (tab) tab.classList.add('active');
+}
+
+// Forum - renderizza tutti i post
+async function renderAllPosts() {
+  const list = document.getElementById('allPostsList');
+  if (!list) return;
+  const posts = await dbGet('posts') || {};
+  const search = document.getElementById('searchPosts')?.value.toLowerCase() || "";
+  const arr = Object.values(posts).filter(p =>
+    p.title.toLowerCase().includes(search) ||
+    p.nickname.toLowerCase().includes(search)
+  );
+  list.innerHTML = arr.map(p => `
+    <div class="post-card">
+      <h4>${p.title}</h4>
+      <p><strong>${p.nickname}</strong> - ${p.date}</p>
+      <p>${p.descriptions[0]?.content || ""}</p>
+    </div>
+  `).join('');
+}
+
 async function editRole(roleId) {
   const roles = await dbGet('roles') || {};
   const role = roles[roleId];
@@ -383,5 +434,3 @@ window.deleteRole = deleteRole;
 
 window.renderAllPosts = renderAllPosts; // se usi la ricerca forum
 
-window.handleLogin = handleLogin;
-window.handleRegister = handleRegister;
