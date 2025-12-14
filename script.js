@@ -355,19 +355,30 @@ async function renderAdminContent() {
 
 /* Espone funzioni al window */
 window.showPage = showPage;
+window.showAdminTab = showAdminTab;
+
 window.handleLogin = handleLogin;
 window.handleRegister = handleRegister;
 window.logout = logout;
+window.switchToRegister = switchToRegister;
+
 window.handleAdminLogin = handleAdminLogin;
 window.logoutAdmin = logoutAdmin;
+
 window.createPost = createPost;
 window.replyToPost = replyToPost;
+
 window.addStaff = addStaff;
 window.deleteStaff = deleteStaff;
+
 window.addProduct = addProduct;
 window.deleteProduct = deleteProduct;
+
 window.changeUserRole = changeUserRole;
 window.deleteUser = deleteUser;
+
 window.addRole = addRole;
 window.editRole = editRole;
 window.deleteRole = deleteRole;
+
+window.renderAllPosts = renderAllPosts; // se usi la ricerca forum
