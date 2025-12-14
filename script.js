@@ -389,6 +389,16 @@ async function populateRoleSelects() {
   }
 }
 
+// Gestione tab Admin
+function showAdminTab(tabName) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  const tab = document.getElementById(`admin-${tabName}`);
+  if (tab) tab.classList.add('active');
+}
+
+// Espone al window
+window.showAdminTab = showAdminTab;
+
 /* Navigation */
 function showPage(pageName) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
