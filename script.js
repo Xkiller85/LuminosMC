@@ -382,3 +382,6 @@ window.editRole = editRole;
 window.deleteRole = deleteRole;
 
 window.renderAllPosts = renderAllPosts; // se usi la ricerca forum
+
+window.handleLogin = handleLogin;
+window.handleRegister = handleRegister;
